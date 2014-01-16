@@ -1,0 +1,11 @@
+# .gitignore for latexmake.py
+
+# Outputs
+Makefile
+
+# compiled python
+latexmake.pyc
+
+# Test stuff
+test*
+test/
