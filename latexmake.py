@@ -726,16 +726,16 @@ def parse_latex_file( filename, params ):
 	files = findSubTeXfiles( texFile );
 	for f in files:
 		if os.path.isfile( f ):
-			params[ 'tex_files' ].append( os.path.abspath( f ) );
+			F = f;
 		elif os.path.isfile( f + ".tex" ):
-			params[ 'tex_files' ].append( os.path.abspath( f + ".tex" ) );
+			F = ( f + ".tex" );
 		else:
-			# TODO: make exception
-			print "file: '" + f + "' + not found"
-		# parse the sub TeX file
-			params = params[ 'tex_files' ][ -1 ];
+			raise latexmake_nonexistantFile( f );
 
-	print params[ 'tex_files' ]
+		# add the file to the list of tex files
+		params[ 'tex_files' ].append( os.path.abspath( F ) );
+		# parse the sub TeX file
+		params = parse_latex_file( F, params );
 
 	return params;
 
@@ -1125,31 +1125,6 @@ def latexmake_parse_inputs():
 # fed latexmake_parse_inputs():
 #--------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
-"""
-def main():
-	try:
-		# parse the parameters
-		params = latexmake_parse_inputs();
-
-		# open the Makefile
-		fid = open( 'Makefile', 'w' );
-		# write the Makefile
-		write_makefile( fid, params );
-		# close the makefile
-		fid.close();
-	except latexmake_nonexistantFile, e:
-		print "the file", e.args, "does not exist."
-	except latexmake_noInput, e:
-		print latexmake_usage();
-		return;
-	except latexmake_invalidBasename, e:
-		print e.args, 'Is not a valid LaTeX file';
-		return;
-	except Exception, e:
-		print 'Unknown error in main():';
-		print e;
-"""
 #--------------------------------------------------------------------------------
 def main():
 
