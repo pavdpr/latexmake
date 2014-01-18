@@ -726,17 +726,17 @@ def parse_latex_file( filename, params ):
 	files = findSubTeXfiles( texFile );
 	for f in files:
 		if os.path.isfile( f ):
-			F = f;
+			params[ 'tex_files' ].append( os.path.abspath( f ) );
 		elif os.path.isfile( f + ".tex" ):
-			F = ( f + ".tex" );
+			params[ 'tex_files' ].append( os.path.abspath( f + ".tex" ) );
 		else:
-			raise latexmake_nonexistantFile( f );
-
-		# add F to list of tex files
-		params[ 'tex_files' ].append( os.path.abspath( F ) );
-		
+			# TODO: make exception
+			print "file: '" + f + "' + not found"
 		# parse the sub TeX file
-		params = parse_latex_file( F, params );
+			params = params[ 'tex_files' ][ -1 ];
+
+	print params[ 'tex_files' ]
+
 	return params;
 
 # fed parse_latex_file( file )
@@ -753,20 +753,8 @@ def parse_latex_file( filename, params ):
 #--------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
-	if functionExists( "latex" ):
-		params[ 'has_latex' ] = True;
-		params[ 'latex' ] = which( "latex" );
-		params[ 'latex_options' ] = "";
-		params[ 'latex_graphics_extensions' ] = [ ".eps" ]; 
-		params[ 'default_compiler' ] = "latex";
-	if functionExists( "pdflatex" ):
-		params[ 'has_pdflatex' ] = True;
-		params[ 'pdflatex' ] = which( "pdflatex" );
-		params[ 'pdflatex_options' ] = "";
-		params[ 'pdflatex_graphics_extensions' ] = [ ".jpg", ".jpeg", ".png", \
-		".pdf" ]; 
-		params[ 'default_compiler' ] = "pdflatex";
-	#TODO: add other compilers
+	params[ 'tex_engine' ] = which( 'pdflatex' );
+	params[ 'tex_options' ] = '--file-line-error';
 	params[ 'bib_engine' ] = which( 'bibtex' );
 	params[ 'idx_engine' ] = which( 'makeindex' );
 	params[ 'make_bib_in_default' ] = False;
@@ -865,24 +853,8 @@ def write_makefile( fid, options ):
 
 	# write the tex engines
 	fid.write( "# TeX commands\n" );
-	if ( "has_latex" ):
-		fid.write( "#latex\n" );
-		fid.write( "LATEX=" + options[ "latex" ] + "\n" );
-		fid.write( "LATEX_OPTIONS=" + options[ "latex_options" ] + "\n" );
-		fid.write( "LATEX_FIG_EXT=" );
-		for ext in options[ "latex_graphics_extensions" ]:
-			fid.write( " *" + ext );
-		fid.write( "\n" );
-	if ( "has_pdflatex" ):
-		fid.write( "#pdflatex\n" );
-		fid.write( "PDFLATEX=" + options[ "pdflatex" ] + "\n" );
-		fid.write( "PDFLATEX_OPTIONS=" + options[ "pdflatex_options" ] + "\n" );
-		fid.write( "PDFLATEX_FIG_EXT=" );
-		for ext in options[ "pdflatex_graphics_extensions" ]:
-			fid.write( " *" + ext );
-		fid.write( "\n" );
-
-	fid.write( "TEX_ENGINE=" + options[ "default_compiler" ] + '\n' );
+	fid.write( "TEX_ENGINE=" + options[ "tex_engine" ] + '\n' );
+	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + '\n' );
 	fid.write( "BIB_ENGINE=" + options[ "bib_engine" ] + '\n' );
 	fid.write( "IDX_ENGINE=" + options[ "idx_engine" ] + '\n' );
 	fid.write( "\n" );
@@ -946,20 +918,6 @@ def write_makefile( fid, options ):
 		"########################################\n" );
 	fid.write( "########################################" + \
 		"########################################\n" );
-
-	fid.write( "\n" );
-	fid.write( "# default\n" );
-	fid.write( ".PHONY: default\n" );
-	fid.write( "default:\n" );
-	fid.write( "\tmake -e " + options[ "default_compiler" ] + "\n" );
-
-	if options[ "has_latex" ]:
-		fid.write( "\n" );
-		fid.write( "# latex\n" );
-		fid.write( ".PHONY: latex\n" );
-		fid.write( "latex: ${TEX_FILES} ${BIB_FILES}\n" );
-		# TODO: figure out figures
-		fid.write( "\tmake -e " + options[ "default_compiler" ] + "\n" );
 
 
 	fid.write( "\n" );
