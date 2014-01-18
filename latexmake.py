@@ -78,6 +78,13 @@ class latexmake_invalidArgument(RuntimeError):
 # class latexmake_invalidArgument(RuntimeError)
 #--------------------------------------------------------------------------------
 
+#--------------------------------------------------------------------------------
+class latexmake_invalidBracketOrder(RuntimeError):
+   def __init__(self, arg):
+      self.args = arg;
+# class latexmake_invalidArgument(RuntimeError)
+#--------------------------------------------------------------------------------
+
 
 #================================================================================
 #
@@ -193,6 +200,16 @@ def unique( data ):
 # fed unique( data )
 #--------------------------------------------------------------------------------
 
+#--------------------------------------------------------------------------------
+def compliment( data, exclude ):
+	output = [];
+	for item in data:
+		if item not in exclude:
+			output.append( item );
+	return output;
+
+# fed compliment( data )
+#--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 def parseLongLines( line, lineLength, tabLength, numTabs, extra ):
@@ -272,156 +289,292 @@ def parseEquals( s ):
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
-def parseNestedEngine( line, leftIndex, rightIndex ):
-	output = [];
-
-	if len( leftIndex ) != len( rightIndex ):
-		# TODO raise exception
-		pass;
-		
-		# set up some iterators
-	lit = 0;
-	rit = 0;
-
-	# set up a stack for left {
-	stack = [];
-
-	# parse the string
-	run = True;
-	print line;
-	o = "";
-	t = "";
-	for i in range( 0, len( line ) ):
-		o += str( i % 10 );
-		t += str( i / 10 );
-	print t;
-	print o;
-	print;
-	it = 0;
-	while run:	
-		print "New Iter ***********************************"
-		print "iteration:", it;
-		print "it:\tl:", lit, "\tr:", rit;
-		#print "idx:\tl:", leftIndex[ lit ], "\tr:", rightIndex[ rit ];
-		print "stack:", stack;
-		mes = "";
-		if len( stack ) == 0:
-			if lit >= len( leftIndex ):
-				mes = "11";
-				# nothing in stack and no left, stop!
-				run = False;
-			else:
-				mes = "12";
-				# nothing in the stack and available left, add left to stack
-				stack.append( leftIndex[ lit ] );
-				lit += 1;
-		# elif rit > lit:
-		# 	# TODO raise exception
-		# 	pass;
-		elif rit >= len( rightIndex ):
-			mes = "2";
-			run = False;
-		else:
-			# the stack is not empty
-
-			# check if we have any possible left braces remaining
-			if lit + 1 < len( leftIndex ):
-				if leftIndex[ lit + 1 ] < rightIndex[ rit ]:
-					mes = "311";
-					stack.append( leftIndex[ lit ] );
-					lit += 1;
-				elif leftIndex[ lit ] < rightIndex[ rit ]:
-					mes = "312";
-					stack.append( leftIndex[ lit ] );
-					lit += 1;
+def findUnescaped( line, char ):
+	idx = line.find( char );
+	if idx > 0:
+		if line[ idx - 1 ] == "\\":
+			if idx < len( line ) - len( char ):
+				# recursively look for the next char
+				tmp = findUnescaped( line[ idx + len( char ): ], char );
+				if tmp < 0:
+					return tmp;
 				else:
-					mes = "313";
-					output.append( line[ stack[-1]:rightIndex[ rit ] + 1 ] );
-					rit += 1;
-					stack.pop();
-			else: 
-				mes = "33";
-				output.append( line[ stack[-1]+1:rightIndex[ rit ] ] );
-				rit += 1;
-				stack.pop();
-		print "message:", mes;
-		it += 1;
-	return output;
-# fed parseNestedEngine( line, leftIndex, rightIndex )
+					return tmp + idx + len( char );
+			else:
+				return -1;
+	# if idx == 0: cannot be escaped => return idx (=0)
+	# if idx < 0: return idx (=-1)
+
+	return idx;
+# fed findNext( line, char )
 #--------------------------------------------------------------------------------
 
+#--------------------------------------------------------------------------------
+def purifyListOfStrings( l, key ):
+	output = [];
+	for item in l:
+		if not re.search( key, item ):
+			output.append( item );
+	return output;
+# fed def purifyListOfStrings( l, key )	
+#--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 def parseDataInSquiglyBraces( line ):
-	# find all squiglies
-	lidx = [ m.start(0) for m in re.finditer( "{", line ) ];
-	ridx = [ m.start(0) for m in re.finditer( "}", line ) ];
+	output = [];
+	lstack = [];
 
-	# find any escaped squiglies
-	not_lidx = [ m.start(0) + 1 for m in re.finditer( "\\\{", line ) ];
-	not_ridx = [ m.start(0) + 1 for m in re.finditer( "\\\}", line ) ];
+	lidx = findUnescaped( line, "{" );
+	ridx = findUnescaped( line, "}" );
 
-	# remove any escaped squiglies from lidx
-	for i in not_lidx:
-		if i in lidx: 
-			lidx.remove( i );
-		else:
-			# TODO raise exception
-			pass;
-
-	# remove any escaped squiglies from ridx
-	for i in not_ridx:
-		if i in ridx: 
-			ridx.remove( i );
-		else:
-			# TODO raise exception
-			pass;
-	
-	# make sure the number of elements in lidx and ridx is the same
-	if len( lidx ) != len( ridx ):
-		pass;
-		# TODO raise exception
-
-	# if there are no squiglies, return an empty list
-	if len( lidx ) == 0:
+	# no braces
+	if lidx < 0:
 		return [];
 
-	# run the parsing engine
-	return parseNestedEngine( line, lidx, ridx );
+	run = True;
+	while run:
 
+		if len( lstack ) == 0:
+			if lidx < 0:
+				if ridx < 0:
+					run = False;
+				else:
+					message = "In string: '" + line + "':\n";
+					message += "\tunbalanced {}";
+					raise latexmake_invalidBracketOrder( message );
+			else:
+				lstack.append( lidx );
+				tmp = findUnescaped( line[ lidx+1:], "{" );
+				if tmp < 0:
+					lidx = -1;
+				else:
+					lidx += tmp + 1;
+		elif lidx < ridx and lidx > 0:
+			lstack.append( lidx );
+			tmp = findUnescaped( line[ lidx+1:], "{" );
+			if tmp < 0:
+				lidx = -1;
+			else:
+				lidx += tmp + 1;
+		elif ridx >= 0:
+			if ( len( lstack  ) == 0 ):
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced {}";
+				raise latexmake_invalidBracketOrder( message );
+			elif lstack[-1] >= ridx:
+				message = "In string: '" + line + "':\n";
+				message += "\t'}' appears before '{'";
+				raise latexmake_invalidBracketOrder( message );
+
+			output.append( line[ lstack.pop() + 1:ridx ] );
+			tmp = findUnescaped( line[ ridx+1:], "}" );
+			if tmp < 0:
+				ridx = -1;
+			else:
+				ridx += tmp + 1;
+		else:
+			if findUnescaped( line[ ridx+1:], "}" ) < 0:
+				run = False;
+			else:
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced {}";
+				raise latexmake_invalidBracketOrder( message );
+
+	return output;
 # fed parseDataInSquiglyBraces( line )
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 def parseDataInSquareBraces( line ):
-	# TODO: this will not correctly handle {{foo} bar}
-	match = re.search( "[.*]", line );
-	if match:
-		return match.group(0) [1:-1]; 
-	else:
-		return None;
+	output = [];
+	lstack = [];
+
+	lidx = findUnescaped( line, "[" );
+	ridx = findUnescaped( line, "]" );
+
+	# no braces
+	if lidx < 0:
+		return [];
+
+	run = True;
+	while run:
+
+		if len( lstack ) == 0:
+			if lidx < 0:
+				if ridx < 0:
+					run = False;
+				else:
+					message = "In string: '" + line + "':\n";
+					message += "\tunbalanced []";
+					raise latexmake_invalidBracketOrder( message );
+			else:
+				lstack.append( lidx );
+				tmp = findUnescaped( line[ lidx+1:], "[" );
+				if tmp < 0:
+					lidx = -1;
+				else:
+					lidx += tmp + 1;
+		elif lidx < ridx and lidx > 0:
+			lstack.append( lidx );
+			tmp = findUnescaped( line[ lidx+1:], "[" );
+			if tmp < 0:
+				lidx = -1;
+			else:
+				lidx += tmp + 1;
+		elif ridx >= 0:
+			if ( len( lstack  ) == 0 ):
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced []";
+				raise latexmake_invalidBracketOrder( message );
+			elif lstack[-1] >= ridx:
+				message = "In string: '" + line + "':\n";
+				message += "\t']' appears before '['";
+				raise latexmake_invalidBracketOrder( message );
+
+			output.append( line[ lstack.pop() + 1:ridx ] );
+			tmp = findUnescaped( line[ ridx+1:], "]" );
+			if tmp < 0:
+				ridx = -1;
+			else:
+				ridx += tmp + 1;
+		else:
+			if findUnescaped( line[ ridx+1:], "]" ) < 0:
+				run = False;
+			else:
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced []";
+				raise latexmake_invalidBracketOrder( message );
+
+	return output;
 # fed parseDataInSquareBraces( line )
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 def parseDataInParentheses( line ):
-	# TODO: this will not correctly handle {{foo} bar}
-	match = re.search( "(.*)", line );
-	if match:
-		return match.group(0) [1:-1]; 
-	else:
-		return None;
+	output = [];
+	lstack = [];
+
+	lidx = findUnescaped( line, "(" );
+	ridx = findUnescaped( line, ")" );
+
+	# no braces
+	if lidx < 0:
+		return [];
+
+	run = True;
+	while run:
+
+		if len( lstack ) == 0:
+			if lidx < 0:
+				if ridx < 0:
+					run = False;
+				else:
+					message = "In string: '" + line + "':\n";
+					message += "\tunbalanced ()";
+					raise latexmake_invalidBracketOrder( message );
+			else:
+				lstack.append( lidx );
+				tmp = findUnescaped( line[ lidx+1:], "(" );
+				if tmp < 0:
+					lidx = -1;
+				else:
+					lidx += tmp + 1;
+		elif lidx < ridx and lidx > 0:
+			lstack.append( lidx );
+			tmp = findUnescaped( line[ lidx+1:], "(" );
+			if tmp < 0:
+				lidx = -1;
+			else:
+				lidx += tmp + 1;
+		elif ridx >= 0:
+			if ( len( lstack  ) == 0 ):
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced ()";
+				raise latexmake_invalidBracketOrder( message );
+			elif lstack[-1] >= ridx:
+				message = "In string: '" + line + "':\n";
+				message += "\t')' appears before '('";
+				raise latexmake_invalidBracketOrder( message );
+
+			output.append( line[ lstack.pop() + 1:ridx ] );
+			tmp = findUnescaped( line[ ridx+1:], ")" );
+			if tmp < 0:
+				ridx = -1;
+			else:
+				ridx += tmp + 1;
+		else:
+			if findUnescaped( line[ ridx+1:], ")" ) < 0:
+				run = False;
+			else:
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced ()";
+				raise latexmake_invalidBracketOrder( message );
+
+	return output;
 # fed parseDataInParenthesies( line )
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 def parseDataInAngleBraces( line ):
-	# TODO: this will not correctly handle {{foo} bar}
-	match = re.search( "<.*>", line );
-	if match:
-		return match.group(0) [1:-1]; 
-	else:
-		return None;
+	lstack = [];
+
+	lidx = findUnescaped( line, "<" );
+	ridx = findUnescaped( line, ">" );
+
+	# no braces
+	if lidx < 0:
+		return [];
+
+	run = True;
+	while run:
+
+		if len( lstack ) == 0:
+			if lidx < 0:
+				if ridx < 0:
+					run = False;
+				else:
+					message = "In string: '" + line + "':\n";
+					message += "\tunbalanced <>";
+					raise latexmake_invalidBracketOrder( message );
+			else:
+				lstack.append( lidx );
+				tmp = findUnescaped( line[ lidx+1:], "<" );
+				if tmp < 0:
+					lidx = -1;
+				else:
+					lidx += tmp + 1;
+		elif lidx < ridx and lidx > 0:
+			lstack.append( lidx );
+			tmp = findUnescaped( line[ lidx+1:], "<" );
+			if tmp < 0:
+				lidx = -1;
+			else:
+				lidx += tmp + 1;
+		elif ridx >= 0:
+			if ( len( lstack  ) == 0 ):
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced <>";
+				raise latexmake_invalidBracketOrder( message );
+			elif lstack[-1] >= ridx:
+				message = "In string: '" + line + "':\n";
+				message += "\t'>' appears before '<'";
+				raise latexmake_invalidBracketOrder( message );
+
+			output.append( line[ lstack.pop() + 1:ridx ] );
+			tmp = findUnescaped( line[ ridx+1:], ">" );
+			if tmp < 0:
+				ridx = -1;
+			else:
+				ridx += tmp + 1;
+		else:
+			if findUnescaped( line[ ridx+1:], ">" ) < 0:
+				run = False;
+			else:
+				message = "In string: '" + line + "':\n";
+				message += "\tunbalanced <>";
+				raise latexmake_invalidBracketOrder( message );
+
+	return output;
 # fed parseDataInAngleBraces( line )
 #--------------------------------------------------------------------------------
 
@@ -494,61 +647,97 @@ def removeTeXcomments( texFile ):
 
 #--------------------------------------------------------------------------------
 def findPackages( texFile ):
-	locs = re.findall( '\\usepackage{.*}', texFile );
+	locs = re.findall( '\\usepackage\{.*\}', texFile );
 	packages = [];
 	for line in locs:
-		package = parseCommaSeparatedData( parseDataInSquiglyBraces( line ) );
-		packages += package;
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
+			package = parseCommaSeparatedData( part );
+			packages += package;
 	return packages;
 # fed findPackages( texFile )
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 def findGraphicsPaths( texFile ):
-	locs = re.findall( '\\usepackage{.*}', texFile );
+	locs = re.findall( '\\graphicspath\{.*\}', texFile );
 	graphicsPaths = [];
 	for line in locs:
-		graphicsPath = parseCommaSeparatedData( parseDataInSquiglyBraces( line ) );
-		graphicsPaths += graphicsPath;
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
+			graphicsPath = parseCommaSeparatedData( part );
+			graphicsPaths += graphicsPath;
 	return graphicsPaths;
-# fed findPackages( texFile )
+# fed findGraphicsPaths( texFile )
+#--------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------
+def findFigures( texFile ):
+	locs = re.findall( '\\includegraphics.*\{.*\}', texFile );
+	figures = [];
+	for line in locs:
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
+			figure = parseCommaSeparatedData( part );
+			figures += figure;
+	return figures;
+# fed findFigures( texFile )
+#--------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------
+def findSubTeXfiles( texFile ):
+	locs = re.findall( '\\include\{.*\}', texFile );
+	files = [];
+	for line in locs:
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
+			subfile = parseCommaSeparatedData( part );
+			files += subfile;
+	locs = re.findall( '\\input\{.*\}', texFile );
+	for line in locs:
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
+			subfile = parseCommaSeparatedData( part );
+			files += subfile;
+	return files;
+# fed findSubTeXfiles( texFile )
 #--------------------------------------------------------------------------------
 
 
-
 #--------------------------------------------------------------------------------
-# get any bibliographies, figures, graphics paths, sub tex files
-def parse_latex_file( filename ):
-	output = {};
-	output[ 'tex_files' ] = [];
-	output[ 'figures' ] = [];
-	output[ 'graphics_paths' ] = [];
-	output[ 'bib_files' ] = [];
-	output[ 'bib_info' ] = {};
-	try:
-		fid = open( filename, 'r' );
-		if fid < 0:
-			raise latexmake_nonexistantFile( filename );
+def parse_latex_file( filename, params ):
+	# output = {};
+	# output[ 'tex_files' ] = [];
+	# output[ 'figures' ] = [];
+	# output[ 'graphics_paths' ] = [];
+	# output[ 'bib_files' ] = [];
+	# output[ 'bib_info' ] = {};
+	fid = open( filename, 'r' );
+	if fid < 0:
+		raise latexmake_nonexistantFile( filename );
 
-		texFile = fid.read();
-		fid.close();
+	texFile = fid.read();
+	fid.close();
 
-		# TODO: look for latexmk directives here
+	# TODO: look for latexmk directives here
 
-		# remove the comments
-		texFile = removeTeXcomments( texFile );
+	# remove the comments
+	texFile = removeTeXcomments( texFile );
 
-		# search for packages
-		packages = findPackages( texFile );
+	# search for packages
+	params[ 'packages' ] += findPackages( texFile );
 
-		# search for included files
+	# search for included files
+	files = findSubTeXfiles( texFile );
+	for f in files:
+		if os.path.isfile( f ):
+			F = f;
+		elif os.path.isfile( f + ".tex" ):
+			F = ( f + ".tex" );
+		else:
+			raise latexmake_nonexistantFile( f );
 
-		print packages
+		# add F to list of tex files
+		params[ 'tex_files' ].append( os.path.abspath( F ) );
 		
-	except latexmake_nonexistantFile, e:
-		raise( latexmake_nonexistantFile( e.args ) );
-	else:
-		return output;
+		# parse the sub TeX file
+		params = parse_latex_file( F, params );
+	return params;
 
 # fed parse_latex_file( file )
 #--------------------------------------------------------------------------------
@@ -564,10 +753,22 @@ def parse_latex_file( filename ):
 #--------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
-	params[ 'tex_engine' ] = 'pdflatex';
-	params[ 'tex_options' ] = '--file-line-error';
-	params[ 'bib_engine' ] = 'bibtex';
-	params[ 'idx_engine' ] = 'makeindex'
+	if functionExists( "latex" ):
+		params[ 'has_latex' ] = True;
+		params[ 'latex' ] = which( "latex" );
+		params[ 'latex_options' ] = "";
+		params[ 'latex_graphics_extensions' ] = [ ".eps" ]; 
+		params[ 'default_compiler' ] = "latex";
+	if functionExists( "pdflatex" ):
+		params[ 'has_pdflatex' ] = True;
+		params[ 'pdflatex' ] = which( "pdflatex" );
+		params[ 'pdflatex_options' ] = "";
+		params[ 'pdflatex_graphics_extensions' ] = [ ".jpg", ".jpeg", ".png", \
+		".pdf" ]; 
+		params[ 'default_compiler' ] = "pdflatex";
+	#TODO: add other compilers
+	params[ 'bib_engine' ] = which( 'bibtex' );
+	params[ 'idx_engine' ] = which( 'makeindex' );
 	params[ 'make_bib_in_default' ] = False;
 	params[ 'make_index_in_default' ] = False;
 	params[ 'basename' ] = '';
@@ -578,31 +779,190 @@ def latexmake_default_params():
 	params[ 'output_extension' ] = [ 'pdf' ];
 	params[ 'graphics_paths' ] = [];
 	params[ 'has_git' ] = functionExists( 'git' );
-	params[ 'has_latex2rft' ] = functionExists( 'latex2rtf' );
+	if params[ 'has_git' ]:
+		params[ 'git' ] = which( "git" );
+	else:
+		params[ 'git' ] = "";
+
+ 	params[ 'has_latex2rft' ] = functionExists( 'latex2rtf' );
+ 	if params[ 'has_latex2rft' ]:
+		params[ 'latex2rtf' ] = which( "latex2rtf" );
+	else:
+		params[ 'latex2rtf' ] = "";
+	params[ 'latex2rtf_options' ] = '-M32';
+
+	params[ 'rm' ] = which( 'rm' );
+	params[ 'rm_options' ] = '-rf';
+	params[ 'packages' ] = [];
+	params[ 'use_absolute_file_paths' ] = False;
+	params[ 'use_absolute_executable_paths' ] = True;
+
+	# set extensions
+	params[ 'tex_aux_extensions' ] = [ '.aux', '.toc', '.lof', '.lot', \
+	'.lof', '.log', '.synctex.gz' ];
+	params[ 'beamer_aux_extensions' ] =	[ '.nav', '.vrb', '.snm', '.out' ];
+	params[ 'bib_aux_extensions' ] = [ '.bbl', '.blg', '.bcf', '.run.xml', \
+	'-blx.bib' ];
+	params[ 'figure_aux_extensions' ] = [ '-converted-to.pdf' ];
+	params[ 'latexmk_aux_extensions' ] = [ '.fdb_latexmk', '.fls' ];
+
+	params[ 'clean_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
+	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
+	params[ 'latexmk_aux_extensions' ];
+
+	params[ 'all_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
+	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
+	params[ 'figure_aux_extensions' ] + params[ 'latexmk_aux_extensions' ];
 	return params;
 # fed latexmake_default_params()
 #--------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
+def latexmake_finalize_params( params ):
+	# set file paths to absolute or relative
+	if params[ 'use_absolute_file_paths' ]:
+		#use absolute paths
+		params[ "tex_files" ] = [ os.path.abspath( path ) \
+		for path in params[ "tex_files" ] ];
+		params[ "fig_files" ] = [ os.path.abspath( path ) \
+		for path in params[ "fig_files" ] ];
+		params[ "bib_files" ] = [ os.path.abspath( path ) \
+		for path in params[ "bib_files" ] ];
+	else:
+		# use relative paths
+		params[ "tex_files" ] = [ os.path.relpath( path ) \
+		for path in params[ "tex_files" ] ];
+		params[ "fig_files" ] = [ os.path.relpath( path ) \
+		for path in params[ "fig_files" ] ];
+		params[ "bib_files" ] = [ os.path.relpath( path ) \
+		for path in params[ "bib_files" ] ];
+
+	# set exicutible paths to absolute or relative
+	if params[ "use_absolute_executable_paths" ]:
+		# use absolute paths
+		params[ 'rm' ] = os.path.abspath( params[ 'rm' ] );
+		pass;
+	else:
+		# use relative paths
+		pass;
+
+	# TODO: remove duplicate aux_extensions
+
+	return params;
+# fed latexmake_finalize_params( params )
+#--------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------
 def write_makefile( fid, options ):
-	# write the engines
-	fid.write( "TEX_ENGINE=" + options[ "tex_engine" ] + '\n' );
-	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + '\n' );
+	# finalize the options
+	options = latexmake_finalize_params( options );
+
+	fid.write( "# Makefile\n" );
+
+	# write some documentation about how created
+	fid.write( latexmake_header() );
+	fid.write( "\n\n" ); 
+
+	# write the tex engines
+	fid.write( "# TeX commands\n" );
+	if ( "has_latex" ):
+		fid.write( "#latex\n" );
+		fid.write( "LATEX=" + options[ "latex" ] + "\n" );
+		fid.write( "LATEX_OPTIONS=" + options[ "latex_options" ] + "\n" );
+		fid.write( "LATEX_FIG_EXT=" );
+		for ext in options[ "latex_graphics_extensions" ]:
+			fid.write( " *" + ext );
+		fid.write( "\n" );
+	if ( "has_pdflatex" ):
+		fid.write( "#pdflatex\n" );
+		fid.write( "PDFLATEX=" + options[ "pdflatex" ] + "\n" );
+		fid.write( "PDFLATEX_OPTIONS=" + options[ "pdflatex_options" ] + "\n" );
+		fid.write( "PDFLATEX_FIG_EXT=" );
+		for ext in options[ "pdflatex_graphics_extensions" ]:
+			fid.write( " *" + ext );
+		fid.write( "\n" );
+
+	fid.write( "TEX_ENGINE=" + options[ "default_compiler" ] + '\n' );
 	fid.write( "BIB_ENGINE=" + options[ "bib_engine" ] + '\n' );
 	fid.write( "IDX_ENGINE=" + options[ "idx_engine" ] + '\n' );
 	fid.write( "\n" );
+	# write t he other enigines of other uitilies
+	fid.write( "# commands\n" )
+	fid.write( "RM=" + options[ "rm" ] + "\n" );
+	fid.write( "RMO=" + options[ "rm_options" ] + "\n" );
+	if options[ "has_git" ]:
+		fid.write( "GIT=" + options[ "git" ] + "\n" );
+	fid.write( "\n" );
+	fid.write( "# Source Files\n" );
 	fid.write( "SOURCE=" + options[ "basename" ] + '\n' );
 	fid.write( "TEX_FILES=" );
 	for f in options[ 'tex_files']:
-		pth = os.path.relpath( f );
-		fid.write( " " + pth );
+		fid.write( " " + f );
 	fid.write( "\n" );
 	fid.write( "BIB_FILES=")
+	for f in options[ 'bib_files' ]:
+		fid.write( " " + f );
 	fid.write( "\n" );
 	fid.write( "FIG_FILES=")
+	for f in options[ 'fig_files' ]:
+		fid.write( " " + f );
 	fid.write( "\n\n" );
+	fid.write( "# Sets of extensions\n" );
+	tmp = "TEX_AUX_EXT=";
+	for ext in options[ 'tex_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	tmp = "BIB_AUX_EXT=";
+	for ext in options[ 'bib_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	tmp = "FIG_AUX_EXT=";
+	for ext in options[ 'figure_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	tmp = "BEAMER_AUX_EXT=";
+	for ext in options[ 'beamer_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	tmp = "ALL_AUX_EXT=";
+	for ext in options[ 'all_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n\n" );
+	
+	fid.write( "########################################" + \
+		"########################################\n" );
+	fid.write( "########################################" + \
+		"########################################\n" );
+	fid.write( "##\n" );
+	fid.write( "##\tNo changes should have to be made after here\n" );
+	fid.write( "##\n" );
+	fid.write( "########################################" + \
+		"########################################\n" );
+	fid.write( "########################################" + \
+		"########################################\n" );
 
-	fid.write( "\n\n" );
+	fid.write( "\n" );
+	fid.write( "# default\n" );
+	fid.write( ".PHONY: default\n" );
+	fid.write( "default:\n" );
+	fid.write( "\tmake -e " + options[ "default_compiler" ] + "\n" );
+
+	if options[ "has_latex" ]:
+		fid.write( "\n" );
+		fid.write( "# latex\n" );
+		fid.write( ".PHONY: latex\n" );
+		fid.write( "latex: ${TEX_FILES} ${BIB_FILES}\n" );
+		# TODO: figure out figures
+		fid.write( "\tmake -e " + options[ "default_compiler" ] + "\n" );
+
+
+	fid.write( "\n" );
 	fid.write( "# all extensions\n" );
 	fid.write( ".PHONY: all\n" );
 	fid.write( "all: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}" );
@@ -646,49 +1006,45 @@ def write_makefile( fid, options ):
 	fid.write( "# clean auxiliary files\n" );
 	fid.write( '.PHONY: clean\n');
 	fid.write( 'clean:\n');
-	writeLongLines( fid, "rm -rf *.aux *.toc *.log *.lof *.lot " + \
-		"*.synctex.gz *.bbl *.blg *.bcf *.run.xml *-blx.bib *.nav *.vrb " + \
-		"*snm *.out *.fls *.fdb_latexmk", 80, 8, 1, False );
-
-	fid.write( "\t\n" );
+	fid.write( "\t${RM} ${RMO} ${ALL_AUX_EXT}\n" );
 
 	# cleanall
 	fid.write( "\n\n" );
 	fid.write( "# clean all output files\n" );
 	fid.write( '.PHONY: cleanall\n');
 	fid.write( 'cleanall:\n');
-	fid.write( "\trm -rf" );
+	tmp = "${RM} ${RMO} ${ALL_AUX_EXT}";
 	for ext in [ "dvi", "ps", "eps", "pdf" ]:
-		fid.write( " ${SOURCE}." + ext );
-	fid.write( "\n" );
-	fid.write( "\tmake -e clean\n" );	
+		tmp += ( " ${SOURCE}." + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 1, False );
 
 	# clean general
 	fid.write( "\n\n" );
 	fid.write( "# clean general auxiliary files\n" );
 	fid.write( '.PHONY: cleangeneral\n');
 	fid.write( 'cleangeneral:\n');
-	fid.write( "\trm -rf *.aux *.toc *.log *.lof *.lot\n" );	
+	fid.write( "\t${RM} ${RMO} ${TEX_AUX_EXT}\n" );
 
 	# clean beamer
 	fid.write( "\n\n" );
 	fid.write( "# clean beamer auxiliary files\n" );
 	fid.write( '.PHONY: cleanbeamer\n');
 	fid.write( 'cleanbeamer:\n');
-	fid.write( "\trm -rf *.aux *.log *.toc *.nav *.vrb *snm *.out\n" );	
+	fid.write( "\t${RM} ${RMO} ${BEAMER_AUX_EXT}\n" );
 
 	# clean bib
 	fid.write( "\n\n" );
 	fid.write( "# clean bibliography auxiliary files\n" );
 	fid.write( '.PHONY: cleanbib\n');
 	fid.write( 'cleanbib:\n');
-	fid.write( "\trm -rf *bbl *.blg *.bcf *.run.xml *-blx.bib\n" );	
+	fid.write( "\t${RM} ${RMO} ${BIB_AUX_EXT}\n" );
 
 	if options[ "has_latex2rft" ]:
 		fid.write( "\n\n" );
 		fid.write( "# make rtf file\n" );
 		fid.write( "${SOURCE}.rtf: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
-		fid.write( "\tlatex2rtf -M32 ${SOURCE}.tex\n" );
+		fid.write( "\t${TEX2RTF} ${TEX2RTF_OPTIONS} ${SOURCE}.tex\n" );
 
 
 	if options[ "has_git" ]:
@@ -697,15 +1053,15 @@ def write_makefile( fid, options ):
 		fid.write( "# git backup\n" );
 		fid.write( ".PHONY: gitbkup\n" );
 		fid.write( "gitbkup: .git .gitignore\n" );
-		fid.write( "\tgit add -A\n" );
-		fid.write( "\tgit commit -m 'bkup'\n" );
+		fid.write( "\t${GIT} add -A\n" );
+		fid.write( "\t${GIT} commit -m 'bkup'\n" );
 		
 
 		# git init ( so make gitbkup does not throw error if not a repository )
 		fid.write( "\n\n" );
 		fid.write( "# git init\n" );
 		fid.write( ".git:\n" );
-		fid.write( "\tgit init\n" );
+		fid.write( "\t${GIT} init\n" );
 		
 
 		# .gitignore
@@ -722,35 +1078,26 @@ def write_makefile( fid, options ):
 			fid.write( "\techo ${SOURCE}." + ext + " >> .gitignore\n" );
 		fid.write( "\techo '' >> .gitignore\n" );
 		fid.write( "\techo '# TeX auxiliary files' >> .gitignore\n" );
-		fid.write( "\techo '*.aux' >> .gitignore\n" );
-		fid.write( "\techo '*.toc' >> .gitignore\n" );
-		fid.write( "\techo '*.lof' >> .gitignore\n" );
-		fid.write( "\techo '*.lot' >> .gitignore\n" );
-		fid.write( "\techo '*.lof' >> .gitignore\n" );
-		fid.write( "\techo '*.log' >> .gitignore\n" );
-		fid.write( "\techo '*.synctex.gz' >> .gitignore\n" );
+		for ext in options[ 'tex_aux_extensions' ]:
+			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
 		fid.write( "\techo '' >> .gitignore\n" );
 		fid.write( "\techo '# beamer auxiliary files' >> .gitignore\n" );
-		fid.write( "\techo '*.nav' >> .gitignore\n" );
-		fid.write( "\techo '*.vrb' >> .gitignore\n" );
-		fid.write( "\techo '*.snm' >> .gitignore\n" );
-		fid.write( "\techo '*.out' >> .gitignore\n" );
+		for ext in options[ 'beamer_aux_extensions' ]:
+			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
 		fid.write( "\techo '' >> .gitignore\n" );
 		fid.write( "\techo '# bibliography auxiliary files' >> .gitignore\n" );
-		fid.write( "\techo '*.bbl' >> .gitignore\n" );
-		fid.write( "\techo '*.blg' >> .gitignore\n" );
-		fid.write( "\techo '*.run.xml' >> .gitignore\n" );
-		fid.write( "\techo '*-blx.bib' >> .gitignore\n" );
+		for ext in options[ 'bib_aux_extensions' ]:
+			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
 		fid.write( "\techo '' >> .gitignore\n" );
 		fid.write( "\techo '# latexmk auxiliary files' >> .gitignore\n" );
-		fid.write( "\techo '*.fdb_latexmk' >> .gitignore\n" );
-		fid.write( "\techo '*.fls' >> .gitignore\n" );
+		for ext in options[ 'latexmk_aux_extensions' ]:
+			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
 		fid.write( "\techo '# converted figures' >> .gitignore\n" );
-		fid.write( "\techo '*-converted-to.pdf' >> .gitignore\n" );
-		for fig in options[ "fig_files" ]:
-			( pth, fig ) = os.path.split( fig );
-			pth = os.path.join( pth, "*-converted-to.pdf" );
-			fid.write( "\techo '" + pth + "' >> .gitignore\n" );
+		for ext in options[ 'figure_aux_extensions' ]:
+			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
+			for pth in options[ "graphics_paths" ]:
+				fid.write( "\techo '" + os.path.join( pth, \
+					"*-converted-to.pdf" ) + "' >> .gitignore\n" );
 		fid.write( "\techo '' >> .gitignore\n" );
 		fid.write( "\techo '# mac things' >> .gitignore\n" );
 		fid.write( "\techo '.DS_STORE' >> .gitignore\n" );
@@ -787,7 +1134,7 @@ def latexmake_parse_inputs():
 		
 		idx = tmp.find( ".tex" );
 
-		output[ "tex_files" ].append( tmp )
+		output[ "tex_files" ].append( os.path.abspath( tmp ) );
 
 		if idx < 0:
 			raise latexmake_invalidBasename( tmp );
@@ -851,7 +1198,7 @@ def main():
 	# parse the parameters
 	params = latexmake_parse_inputs();
 	
-	foo = parse_latex_file( params[ "basename" ] + ".tex" );
+	params = parse_latex_file( params[ "basename" ] + ".tex", params );
 
 	# open the Makefile
 	fid = open( 'Makefile', 'w' );
@@ -859,6 +1206,7 @@ def main():
 	# write the Makefile
 	write_makefile( fid, params );		# close the makefile
 	fid.close();
+	return;
 #fed main()
 #--------------------------------------------------------------------------------
 
