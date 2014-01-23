@@ -43,47 +43,47 @@ latexmake_version_revision = 1;
 #================================================================================
 
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 class latexmake_invalidInput(RuntimeError):
    def __init__(self, arg):
       self.args = arg;
 # class latexmake_invalidInput(RuntimeError)
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 class latexmake_noInput(RuntimeError):
    def __init__(self, arg):
       self.args = arg;
 # class latexmake_noInput(RuntimeError)
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 class latexmake_invalidBasename(RuntimeError):
    def __init__(self, arg):
       self.args = arg;
 # class latexmake_invalidBasename(RuntimeError)
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 class latexmake_nonexistantFile(RuntimeError):
    def __init__(self, arg):
       self.args = arg;
 # class latexmake_invalidBasename(RuntimeError)
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 class latexmake_invalidArgument(RuntimeError):
    def __init__(self, arg):
       self.args = arg;
 # class latexmake_invalidArgument(RuntimeError)
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 class latexmake_invalidBracketOrder(RuntimeError):
    def __init__(self, arg):
       self.args = arg;
 # class latexmake_invalidArgument(RuntimeError)
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 #================================================================================
@@ -93,15 +93,15 @@ class latexmake_invalidBracketOrder(RuntimeError):
 #================================================================================
 
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def is_exe(fpath):
 	# used to see if fpath is an executable
 	# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
 	return os.path.isfile(fpath) and os.access(fpath, os.X_OK);
 # fed is_exe( fpath )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def functionExists(program):
 
 	fpath, fname = os.path.split(program);
@@ -116,9 +116,9 @@ def functionExists(program):
 
 		return False;
 # fed functionExists( program )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def which(program):
 	# a unix-like which
 	# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
@@ -136,7 +136,7 @@ def which(program):
 
 	return None;
 # fed which( program ) 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 #================================================================================
@@ -146,7 +146,7 @@ def which(program):
 #================================================================================
 
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_usage():
 	output = 'latexmake [options] basefilename\n';
 	output += '\t--tex=/path/to/tex compiler\n';
@@ -154,17 +154,17 @@ def latexmake_usage():
 	#output += '\t--nooverwrite\t\t\tWill not overwrite a Makefile\n';
 	return output
 # fed latexmake_usage()
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_copyright():
 	output = 'latexmake\n';
 	output += '\n\tCopyright 2014 Paul Romanczyk\n';
 	return output
 # fed latexmake_copyright()
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_version():
 	output = \
 	str( latexmake_version_major ) + '.' + \
@@ -172,15 +172,15 @@ def latexmake_version():
 	str( latexmake_version_revision );
 	return output;
 # fed latexmake_version()
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_header():
 	output = '# Generated by latexmake v' + latexmake_version() + '\n';
 	output += '# Created on ' + str( datetime.datetime.utcnow() ) + ' UTC\n';
 	return output;
 # fed latexmake_header()
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 #================================================================================
@@ -189,7 +189,7 @@ def latexmake_header():
 #
 #================================================================================
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def unique( data ):
 	output = [];
 	for item in data:
@@ -198,9 +198,9 @@ def unique( data ):
 	return output;
 
 # fed unique( data )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def compliment( data, exclude ):
 	output = [];
 	for item in data:
@@ -209,9 +209,9 @@ def compliment( data, exclude ):
 	return output;
 
 # fed compliment( data )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseLongLines( line, lineLength, tabLength, numTabs, extra ):
 	if numTabs < 0:
 		numTabs = 0;
@@ -247,9 +247,9 @@ def parseLongLines( line, lineLength, tabLength, numTabs, extra ):
 
 	return output;
 # fed parseLongLines( line, maxLength )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def writeLongLines( fid, line, lineLength, tabLength, numTabs, extra ):
 	lines = parseLongLines( line, lineLength, tabLength, numTabs, extra );
 	if numTabs < 0:
@@ -271,9 +271,9 @@ def writeLongLines( fid, line, lineLength, tabLength, numTabs, extra ):
 		fid.write( tabs + lines[-1] + "\n" );
 	return;
 # fed parseLongLines( line, maxLength )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseEquals( s ):
 	try:
 		idx = s.find( "=" );
@@ -286,9 +286,9 @@ def parseEquals( s ):
 	else:
 		return (left, right);
 # fed parseEquals( s )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def findUnescaped( line, char ):
 	idx = line.find( char );
 	if idx > 0:
@@ -307,9 +307,9 @@ def findUnescaped( line, char ):
 
 	return idx;
 # fed findNext( line, char )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def purifyListOfStrings( l, key ):
 	output = [];
 	for item in l:
@@ -317,9 +317,9 @@ def purifyListOfStrings( l, key ):
 			output.append( item );
 	return output;
 # fed def purifyListOfStrings( l, key )	
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseDataInSquiglyBraces( line ):
 	output = [];
 	lstack = [];
@@ -382,9 +382,9 @@ def parseDataInSquiglyBraces( line ):
 
 	return output;
 # fed parseDataInSquiglyBraces( line )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseDataInSquareBraces( line ):
 	output = [];
 	lstack = [];
@@ -447,9 +447,9 @@ def parseDataInSquareBraces( line ):
 
 	return output;
 # fed parseDataInSquareBraces( line )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseDataInParentheses( line ):
 	output = [];
 	lstack = [];
@@ -512,9 +512,9 @@ def parseDataInParentheses( line ):
 
 	return output;
 # fed parseDataInParenthesies( line )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseDataInAngleBraces( line ):
 	lstack = [];
 
@@ -576,7 +576,7 @@ def parseDataInAngleBraces( line ):
 
 	return output;
 # fed parseDataInAngleBraces( line )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 
@@ -587,7 +587,7 @@ def parseDataInAngleBraces( line ):
 #================================================================================
 
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parseCommaSeparatedData( line ):
 	locs = [ (None,0) ];
 	for m in re.finditer( "\s*,\s*", line ):
@@ -599,9 +599,9 @@ def parseCommaSeparatedData( line ):
 
 	return output;
 # fed parseCommaSeparatedData( line )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def removeTeXcomments( texFile ):
 	texFileList = texFile.splitlines();
 	output = "";
@@ -643,63 +643,71 @@ def removeTeXcomments( texFile ):
 				pass;
 	return output
 # fed removeTeXcomments
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
-def findPackages( texFile ):
-	locs = re.findall( '\\usepackage\{.*\}', texFile );
+#-------------------------------------------------------------------------------
+def findPackages( texFile, params ):
+	locs = re.findall( r"\\usepackage(\[.*\])?(\{.*\})", texFile );
 	packages = [];
 	for line in locs:
 		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
 			package = parseCommaSeparatedData( part );
 			packages += package;
-	return packages;
-# fed findPackages( texFile )
-#--------------------------------------------------------------------------------
+			if package == "epstopdf":
+				if params[ 'tex_engine' ] == "pdflatex":
+					params[ "figure_aux_extensions" ] += ".eps";
 
-#--------------------------------------------------------------------------------
+	params[ 'packages' ] += packages;
+	return params;
+# fed findPackages( texFile )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 def findGraphicsPaths( texFile ):
 	locs = re.findall( '\\graphicspath\{.*\}', texFile );
 	graphicsPaths = [];
-	for line in locs:
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
-			graphicsPath = parseCommaSeparatedData( part );
-			graphicsPaths += graphicsPath;
+	# for line in locs:
+	# 	for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
+	# 		"\{\}" ):
+	# 		graphicsPath = parseCommaSeparatedData( part );
+	# 		graphicsPaths += graphicsPath;
 	return graphicsPaths;
 # fed findGraphicsPaths( texFile )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def findFigures( texFile ):
-	locs = re.findall( '\\includegraphics.*\{.*\}', texFile );
+	locs = re.findall( r'\\includegraphics(\[.*\])?\{.*\}', texFile );
 	figures = [];
 	for line in locs:
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
+			"\{\}" ):
 			figure = parseCommaSeparatedData( part );
 			figures += figure;
 	return figures;
 # fed findFigures( texFile )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
-def findSubTeXfiles( texFile ):
-	locs = re.findall( '\\include\{.*\}', texFile );
+#-------------------------------------------------------------------------------
+def findSubTeXfiles( texFile, params ):
+	key = r"\\(include|input)(\[.*\])?(\{.*\})";			# key ends with text in {}
+	foo = re.compile( key );
+	locs = re.findall( key, texFile );
+	print locs;
 	files = [];
 	for line in locs:
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
-			subfile = parseCommaSeparatedData( part );
-			files += subfile;
-	locs = re.findall( '\\input\{.*\}', texFile );
-	for line in locs:
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
-			subfile = parseCommaSeparatedData( part );
-			files += subfile;
-	return files;
+		print line
+		# for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
+		# 	"\{\}" ):
+		# 	subfile = parseCommaSeparatedData( part );
+		# 	files += subfile;
+	# TODO: update params
+	return params;
 # fed findSubTeXfiles( texFile )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def parse_latex_file( filename, params ):
 	# output = {};
 	# output[ 'tex_files' ] = [];
@@ -720,27 +728,27 @@ def parse_latex_file( filename, params ):
 	texFile = removeTeXcomments( texFile );
 
 	# search for packages
-	params[ 'packages' ] += findPackages( texFile );
+	params = findPackages( texFile, params );
 
 	# search for included files
-	files = findSubTeXfiles( texFile );
-	for f in files:
-		if os.path.isfile( f ):
-			F = f;
-		elif os.path.isfile( f + ".tex" ):
-			F = ( f + ".tex" );
-		else:
-			raise latexmake_nonexistantFile( f );
+	params = findSubTeXfiles( texFile, params );
+	# for f in files:
+	# 	if os.path.isfile( f ):
+	# 		F = f;
+	# 	elif os.path.isfile( f + ".tex" ):
+	# 		F = ( f + ".tex" );
+	# 	else:
+	# 		raise latexmake_nonexistantFile( f );
 
-		# add the file to the list of tex files
-		params[ 'tex_files' ].append( os.path.abspath( F ) );
-		# parse the sub TeX file
-		params = parse_latex_file( F, params );
+	# 	# add the file to the list of tex files
+	# 	params[ 'tex_files' ].append( os.path.abspath( F ) );
+	# 	# parse the sub TeX file
+	# 	params = parse_latex_file( F, params );
 
 	return params;
 
 # fed parse_latex_file( file )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 #================================================================================
@@ -750,7 +758,7 @@ def parse_latex_file( filename, params ):
 #================================================================================
 
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
 	params[ 'tex_engine' ] = which( 'pdflatex' );
@@ -803,9 +811,9 @@ def latexmake_default_params():
 	params[ 'figure_aux_extensions' ] + params[ 'latexmk_aux_extensions' ];
 	return params;
 # fed latexmake_default_params()
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_finalize_params( params ):
 	# set file paths to absolute or relative
 	if params[ 'use_absolute_file_paths' ]:
@@ -838,9 +846,9 @@ def latexmake_finalize_params( params ):
 
 	return params;
 # fed latexmake_finalize_params( params )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def write_makefile( fid, options ):
 	# finalize the options
 	options = latexmake_finalize_params( options );
@@ -1064,9 +1072,9 @@ def write_makefile( fid, options ):
 
 	return;
 # fed write_makefile( fid )
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def latexmake_parse_inputs():
 	args = sys.argv;
 	try:
@@ -1123,9 +1131,9 @@ def latexmake_parse_inputs():
 	else:
 		return output;
 # fed latexmake_parse_inputs():
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 def main():
 
 	# parse the parameters
@@ -1141,7 +1149,7 @@ def main():
 	fid.close();
 	return;
 #fed main()
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
