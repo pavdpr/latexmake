@@ -9,3 +9,8 @@ latexmake.pyc
 # Test stuff
 test*
 test/
+
+# Test figures
+*.pdf
+*.png
+*.eps
