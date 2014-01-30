@@ -642,68 +642,102 @@ def removeTeXcomments( texFile ):
 				# do nothing here
 				pass;
 	return output
-# fed removeTeXcomments
+# fed removeTeXcomments( texFile )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def findPackages( texFile, params ):
 	locs = re.findall( r"\\usepackage(\[.*\])?(\{.*\})", texFile );
 	packages = [];
-	for line in locs:
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), "\{\}" ):
-			package = parseCommaSeparatedData( part );
-			packages += package;
-			if package == "epstopdf":
-				if params[ 'tex_engine' ] == "pdflatex":
-					params[ "figure_aux_extensions" ] += ".eps";
-
+	for tmp in locs:
+		line = tmp[ -1 ];
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
+			r"[\{\}]" ):
+			p = parseCommaSeparatedData( part );
+			packages += p;
+			for package in p:
+				if package == "epstopdf":
+					if params[ 'tex_engine' ] == "pdflatex":
+						params[ "fig_extensions" ] += ".eps";
+	# update the packages list in params				
 	params[ 'packages' ] += packages;
 	return params;
-# fed findPackages( texFile )
+# fed findPackages( texFile, params )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findGraphicsPaths( texFile ):
-	locs = re.findall( '\\graphicspath\{.*\}', texFile );
+def findGraphicsPaths( texFile, params ):
+	locs = re.findall( r'\\graphicspath\{(.*)\}', texFile );
 	graphicsPaths = [];
-	# for line in locs:
-	# 	for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
-	# 		"\{\}" ):
-	# 		graphicsPath = parseCommaSeparatedData( part );
-	# 		graphicsPaths += graphicsPath;
-	return graphicsPaths;
-# fed findGraphicsPaths( texFile )
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-def findFigures( texFile ):
-	locs = re.findall( r'\\includegraphics(\[.*\])?\{.*\}', texFile );
-	figures = [];
 	for line in locs:
 		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
-			"\{\}" ):
-			figure = parseCommaSeparatedData( part );
-			figures += figure;
-	return figures;
-# fed findFigures( texFile )
+			r"[\{\}]" ):
+			if os.path.isdir( part ) and os.path.exists( part ):
+				# we are a valid path
+				params[ "graphics_paths" ].append( os.path.abspath( part ) );
+			else:
+				#TODO?: raise exception
+				print "'" + part + "' is not a valid graphicspath";
+	return params;
+# fed findGraphicsPaths( texFile, params )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findGraphicsExtensions( texFile, params ):
+	locs = re.findall( r'\\DeclareGraphicsExtensions\{(.*)\}', texFile );
+	if not locs:
+		return params;
+	for item in locs:
+		if parseDataInSquiglyBraces( item ):
+			# residual squiglies
+			item = parseDataInSquiglyBraces( item );
+			params[ "fig_extensions"] = parseCommaSeparatedData( item );
+			#TODO: check to see if I can have a .jpg if the g.e. is just .eps
+	return params;
+# fed findGraphicsExtensions( texFile, params )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findFigures( texFile, params ):
+	# TODO: also get pgf figures
+	m = re.findall( r'\\includegraphics(\[.*\])?(\{.*\})', texFile );
+	figures = [];
+	for n in m:
+		for o in n:
+			print parseDataInSquiglyBraces( o )
+		# for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
+		# 	"\{\}" ):
+		# 	figure = parseCommaSeparatedData( part );
+		# 	figures += figure;
+	return params;
+# fed findFigures( texFile, params )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def findSubTeXfiles( texFile, params ):
-	key = r"\\(include|input)(\[.*\])?(\{.*\})";			# key ends with text in {}
-	foo = re.compile( key );
+	key = r"\\(include|input)(\[.*\])?(\{.*\})";
 	locs = re.findall( key, texFile );
-	print locs;
 	files = [];
-	for line in locs:
-		print line
-		# for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
-		# 	"\{\}" ):
-		# 	subfile = parseCommaSeparatedData( part );
-		# 	files += subfile;
-	# TODO: update params
+	for tmp in locs:
+		line = tmp[ -1 ];
+		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
+		 	r"[\{\}]" ):
+			p = parseCommaSeparatedData( part );
+			for subfile in parseCommaSeparatedData( part ):
+				if os.path.isfile( subfile ):
+					f = os.path.abspath( subfile );
+				elif os.path.isfile( subfile + ".tex" ):
+					f = os.path.abspath( subfile + ".tex" );
+				else:
+					#TODO?: raise exception
+					f = None;
+					print "File Not Found: '" + subfile + "'";
+				if f:
+					params[ "tex_files" ].append( f );
+					# parse the sub tex file
+					params = parse_latex_file( f, params );			
 	return params;
-# fed findSubTeXfiles( texFile )
+# fed findSubTeXfiles( texFile, params )
 #-------------------------------------------------------------------------------
 
 
@@ -730,20 +764,17 @@ def parse_latex_file( filename, params ):
 	# search for packages
 	params = findPackages( texFile, params );
 
-	# search for included files
+	# search for included tex files
 	params = findSubTeXfiles( texFile, params );
-	# for f in files:
-	# 	if os.path.isfile( f ):
-	# 		F = f;
-	# 	elif os.path.isfile( f + ".tex" ):
-	# 		F = ( f + ".tex" );
-	# 	else:
-	# 		raise latexmake_nonexistantFile( f );
 
-	# 	# add the file to the list of tex files
-	# 	params[ 'tex_files' ].append( os.path.abspath( F ) );
-	# 	# parse the sub TeX file
-	# 	params = parse_latex_file( F, params );
+	# search for Graphics Extensions
+	params = findGraphicsExtensions( texFile, params );
+	
+	# find graphics paths
+	params = findGraphicsPaths( texFile, params );
+
+	# search for figures
+	params = findFigures( texFile, params );
 
 	return params;
 
@@ -773,7 +804,7 @@ def latexmake_default_params():
 	params[ 'fig_files' ] = [];
 	params[ 'bib_files' ] = [];
 	params[ 'output_extension' ] = [ 'pdf' ];
-	params[ 'graphics_paths' ] = [];
+	params[ 'graphics_paths' ] = [ "." ];
 	params[ 'has_git' ] = functionExists( 'git' );
 	if params[ 'has_git' ]:
 		params[ 'git' ] = which( "git" );
@@ -794,6 +825,7 @@ def latexmake_default_params():
 	params[ 'use_absolute_executable_paths' ] = True;
 
 	# set extensions
+	params[ 'fig_extensions' ] = [ ".pdf", ".png", ".jpg", ".jpeg" ];
 	params[ 'tex_aux_extensions' ] = [ '.aux', '.toc', '.lof', '.lot', \
 	'.lof', '.log', '.synctex.gz' ];
 	params[ 'beamer_aux_extensions' ] =	[ '.nav', '.vrb', '.snm', '.out' ];
@@ -1109,7 +1141,6 @@ def latexmake_parse_inputs():
 		output[ 'basename' ] = tmp;
 
 		for arg in args[1:-1]:
-			#print arg
 			if arg.find( "--tex=" ) == 0:
 				pass;
 			elif arg.find( "--bib=" ) == 0:
