@@ -896,10 +896,12 @@ def findLocalStyFiles( styname, params, thisFileName ):
 			# TODO: include other subfolder excludes
 
 		f = None;
-		if styname in files:
-			f = os.path.abspath( styname );
-		elif ( styname + ".sty" ) in files:
-			f = os.path.abspath( styname + ".sty" );
+		# this is bad logic. files may be in the directory tree.
+
+		#if styname in files:
+		#	f = os.path.abspath( styname );
+		#elif ( styname + ".sty" ) in files:
+		#	f = os.path.abspath( styname + ".sty" );
 
 		if f:
 			params[ "sty_files" ].append( f );
