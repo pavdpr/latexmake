@@ -116,6 +116,13 @@ class latexmake_invalidBracketOrder(RuntimeError):
 # class latexmake_invalidArgument(RuntimeError)
 #-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+class latexmake_makeDoesNotExist(RuntimeError):
+   def __init__(self, arg):
+      self.args = arg;
+# class latexmake_makeDoesNotExist(RuntimeError)
+#-------------------------------------------------------------------------------
+
 
 #================================================================================
 #
@@ -739,7 +746,6 @@ def findPackages( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 def findGraphicsPaths( texFile, params, thisFileName ):
 	locs = re.findall( r'\\graphicspath\{(.*)\}', texFile );
-	graphicsPaths = [];
 	for line in locs:
 		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
 			r"[\{\}]" ):
@@ -991,6 +997,9 @@ def latexmake_default_params():
 		params[ 'git' ] = which( "git" );
 	else:
 		params[ 'git' ] = "";
+	params[ 'make' ] = which( "make" );
+	if not functionExists( "make" ):
+		raise latexmake_makeDoesNotExist( "make is not in your path" );
 
  	params[ 'has_latex2rft' ] = functionExists( 'latex2rtf' );
  	if params[ 'has_latex2rft' ]:
@@ -1068,6 +1077,7 @@ def latexmake_finalize_params( params ):
 	if params[ "use_absolute_executable_paths" ]:
 		# use absolute paths
 		params[ 'rm' ] = os.path.abspath( params[ 'rm' ] );
+		params[ 'make' ] = os.path.abspath( params[ 'make' ] );
 		pass;
 	else:
 		# use relative paths
@@ -1099,43 +1109,53 @@ def write_makefile( fid, options ):
 	fid.write( "\n" );
 	# write the other enigines of other uitilies
 	fid.write( "# commands\n" )
+	fid.write( "MAKE=" + options[ "make" ] + "\n" );
 	fid.write( "RM=" + options[ "rm" ] + "\n" );
 	fid.write( "RMO=" + options[ "rm_options" ] + "\n" );
 	if options[ "has_git" ]:
 		fid.write( "GIT=" + options[ "git" ] + "\n" );
 	fid.write( "\n" );
+
 	fid.write( "# Source Files\n" );
 	fid.write( "SOURCE=" + options[ "basename" ] + '\n' );
-	
+	fid.write( "\n" );
+
 	tmp = "TEX_FILES=";
 	for f in options[ 'tex_files' ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "BIB_FILES=";
 	for f in options[ 'bib_files' ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "FIG_FILES=";
 	for f in options[ 'fig_files' ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "STY_FILES=";
 	for f in options[ 'sty_files' ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "CLS_FILES=";
 	for f in options[ 'cls_files' ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
+
+	# extensions
 
 	fid.write( "\n" );
 	fid.write( "# Sets of extensions\n" );
@@ -1143,31 +1163,37 @@ def write_makefile( fid, options ):
 	for ext in options[ 'tex_aux_extensions' ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
+
 	tmp = "BIB_AUX_EXT=";
 	for ext in options[ 'bib_aux_extensions' ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "FIG_AUX_EXT=";
-	for ext in options[ 'figure_aux_extensions' ]:
-		tmp += ( " *" + ext );
+	for pth in options[ "graphics_paths" ]:
+		for ext in options[ 'figure_aux_extensions' ]:
+			tmp += ( " " + os.path.join( pth, "*" + ext ) );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "IDX_AUX_EXT=";
 	for ext in options[ 'idx_aux_extensions' ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "BEAMER_AUX_EXT=";
 	for ext in options[ 'beamer_aux_extensions' ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
 
 	tmp = "ALL_AUX_EXT=";
 	for ext in options[ 'all_aux_extensions' ]:
@@ -1204,7 +1230,7 @@ def write_makefile( fid, options ):
 		if options[ "make_index_in_default" ]:
 			fid.write( "\t${IDX_ENGINE} ${SOURCE}\n" );
 			# TODO: add index engine
-	fid.write( "\tmake -e final\n" );
+	fid.write( "\t${MAKE} -e final\n" );
 
 	# write the code to make the main part of the makefile
 	for ext in options[ 'output_extension' ]:
@@ -1217,7 +1243,7 @@ def write_makefile( fid, options ):
 				fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
 			if options[ "make_index_in_default" ]:
 				pass;
-		fid.write( "\tmake -e final\n" );
+		fid.write( "\t${MAKE} -e final\n" );
 
 	# final is the last 2 latex compiles
 	fid.write( "\n\n" );
@@ -1233,7 +1259,7 @@ def write_makefile( fid, options ):
 	fid.write( '.PHONY: bibliography\n');
 	fid.write( 'bibliography: ${SOURCE}.aux ${TEX_FILES} ${BIB_FILES}\n');
 	fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
-	fid.write( "\tmake -e final\n" );
+	fid.write( "\t${MAKE} -e final\n" );
 
 	# index
 	fid.write( "\n\n" );
@@ -1241,7 +1267,7 @@ def write_makefile( fid, options ):
 	fid.write( '.PHONY: index\n');
 	fid.write( 'index: ${SOURCE}.aux ${TEX_FILES}\n');
 	fid.write( "\t${IDX_ENGINE} ${SOURCE}\n" );
-	fid.write( "\tmake -e final\n" );
+	fid.write( "\t{MAKE} -e final\n" );
 
 	# some other builds that might be needed
 
