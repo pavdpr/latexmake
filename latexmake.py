@@ -752,6 +752,8 @@ def findGraphicsPaths( texFile, params, thisFileName ):
 			if os.path.isdir( part ) and os.path.exists( part ):
 				# we are a valid path
 				params[ "graphics_paths" ].append( os.path.abspath( part ) );
+				if os.path.abspath( part ) not in params[ "sub_paths" ]:
+					params[ "sub_paths" ].append( os.path.abspath( part ) );
 			else:
 				#TODO?: raise exception
 				warning( "In \"" + thisFileName + "\": \"" + part + \
@@ -847,8 +849,15 @@ def findSubTeXfiles( texFile, params, thisFileName ):
 
 				if f:
 					params[ "tex_files" ].append( f );
+					( tmp, _ ) = os.path.split( f );
+					tmp = os.path.abspath( tmp );
+					if tmp not in params[ "sub_paths" ]:
+						params[ "sub_paths" ].append( tmp );
+
 					# parse the sub tex file
 					params = parse_latex_file( f, params );
+
+					
 
 		
 	return params;
@@ -987,6 +996,7 @@ def latexmake_default_params():
 	params[ 'texmf_include_dirs' ] = [];
 	params[ 'output_extension' ] = [ 'pdf' ];
 	params[ 'graphics_paths' ] = [ "." ];
+	params[ 'sub_paths' ] = [];
 	# TODO: make a bit more robust for differnt os's
 	if os.path.exists( "~/Libarary/texmf" ):
 		params[ 'texmf_path' ] = "~/Libarary/texmf"
@@ -1010,6 +1020,8 @@ def latexmake_default_params():
 
 	params[ 'rm' ] = which( 'rm' );
 	params[ 'rm_options' ] = '-rf';
+	params[ "echo" ] = which( "echo" );
+
 	params[ 'packages' ] = [];
 	params[ 'use_absolute_file_paths' ] = False;
 	params[ 'use_absolute_executable_paths' ] = True;
@@ -1018,22 +1030,24 @@ def latexmake_default_params():
 	# set extensions
 	params[ 'fig_extensions' ] = [ ".pdf", ".png", ".jpg", ".jpeg" ];
 	params[ 'tex_aux_extensions' ] = [ '.aux', '.toc', '.lof', '.lot', \
-	'.lof', '.log', '.synctex.gz' ];
+	'.lof', '.log', '.synctex.*' ];
 	params[ 'beamer_aux_extensions' ] =	[ '.nav', '.vrb', '.snm', '.out' ];
 	params[ 'bib_aux_extensions' ] = [ '.bbl', '.blg', '.bcf', '.run.xml', \
 	'-blx.bib' ];
 	params[ 'figure_aux_extensions' ] = [ '-converted-to.pdf' ];
 	params[ 'idx_aux_extensions' ] = [ '.ilg', '.ind' ];
 	params[ 'latexmk_aux_extensions' ] = [ '.fdb_latexmk', '.fls' ];
+	params[ 'pkg_aux_extensions' ] = [ '.glsdefs' ];
 
 	params[ 'clean_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
 	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
-	params[ 'latexmk_aux_extensions' ] + params[ 'idx_aux_extensions' ];
+	params[ 'latexmk_aux_extensions' ] + params[ 'idx_aux_extensions' ] + \
+	params[ 'pkg_aux_extensions' ];
 
 	params[ 'all_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
 	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
 	params[ 'figure_aux_extensions' ] + params[ 'latexmk_aux_extensions' ] + \
-	params[ 'idx_aux_extensions' ];
+	params[ 'idx_aux_extensions' ] + params[ 'pkg_aux_extensions' ];
 	return params;
 # fed latexmake_default_params()
 #-------------------------------------------------------------------------------
@@ -1045,39 +1059,44 @@ def latexmake_finalize_params( params ):
 		#use absolute paths
 		params[ "basepath" ] = os.path.abspath( params[ "basepath" ] );
 		params[ "tex_files" ] = [ os.path.abspath( path ) \
-		for path in params[ "tex_files" ] ];
+			for path in params[ "tex_files" ] ];
 		params[ "fig_files" ] = [ os.path.abspath( path ) \
-		for path in params[ "fig_files" ] ];
+			for path in params[ "fig_files" ] ];
 		params[ "bib_files" ] = [ os.path.abspath( path ) \
-		for path in params[ "bib_files" ] ];
+			for path in params[ "bib_files" ] ];
 		params[ "sty_files" ] = [ os.path.abspath( path ) \
-		for path in params[ "sty_files" ] ];
+			for path in params[ "sty_files" ] ];
 		params[ "cls_files" ] = [ os.path.abspath( path ) \
-		for path in params[ "cls_files" ] ];
+			for path in params[ "cls_files" ] ];
 		params[ "graphics_paths" ] = [ os.path.abspath( path ) \
-		for path in params[ "graphics_paths" ] ];
+			for path in params[ "graphics_paths" ] ];
+		params[ "sub_paths" ] = [ os.path.abspath( path ) \
+			for path in params[ "sub_paths" ] ];
 
 	else:
 		# use relative paths
 		params[ "basepath" ] = os.path.relpath( params[ "basepath" ] );
 		params[ "tex_files" ] = [ os.path.relpath( path ) \
-		for path in params[ "tex_files" ] ];
+			for path in params[ "tex_files" ] ];
 		params[ "fig_files" ] = [ os.path.relpath( path ) \
-		for path in params[ "fig_files" ] ];
+			for path in params[ "fig_files" ] ];
 		params[ "bib_files" ] = [ os.path.relpath( path ) \
-		for path in params[ "bib_files" ] ];
+			for path in params[ "bib_files" ] ];
 		params[ "sty_files" ] = [ os.path.relpath( path ) \
-		for path in params[ "sty_files" ] ];
+			for path in params[ "sty_files" ] ];
 		params[ "cls_files" ] = [ os.path.relpath( path ) \
-		for path in params[ "cls_files" ] ];
+			for path in params[ "cls_files" ] ];
 		params[ "graphics_paths" ] = [ os.path.relpath( path ) \
-		for path in params[ "graphics_paths" ] ];
+			for path in params[ "graphics_paths" ] ];
+		params[ "sub_paths" ] = [ os.path.relpath( path ) \
+			for path in params[ "sub_paths" ] ];
 
 	# set exicutible paths to absolute or relative
 	if params[ "use_absolute_executable_paths" ]:
 		# use absolute paths
 		params[ 'rm' ] = os.path.abspath( params[ 'rm' ] );
 		params[ 'make' ] = os.path.abspath( params[ 'make' ] );
+		params[ "echo" ] = os.path.abspath( params[ "echo" ] );
 		pass;
 	else:
 		# use relative paths
@@ -1112,6 +1131,7 @@ def write_makefile( fid, options ):
 	fid.write( "MAKE=" + options[ "make" ] + "\n" );
 	fid.write( "RM=" + options[ "rm" ] + "\n" );
 	fid.write( "RMO=" + options[ "rm_options" ] + "\n" );
+	fid.write( "ECHO=" + options[ "echo" ] + "\n" );
 	if options[ "has_git" ]:
 		fid.write( "GIT=" + options[ "git" ] + "\n" );
 	fid.write( "\n" );
@@ -1154,6 +1174,22 @@ def write_makefile( fid, options ):
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
+	fid.write( "\n" );
+
+	# paths
+
+	fid.write( "# PATHS\n" );
+	fid.write( "\n" );
+
+	tmp = "SUB_PATHS="
+	for f in options[ "sub_paths" ]:
+		tmp += ( " " + f );
+	tmp += ( "\n" );
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
+
+	fid.write( "CLEANDIRS = $(SUB_PATHS:%=clean-%)\n");
+	fid.write( "\n" );
 
 	# extensions
 
@@ -1190,6 +1226,13 @@ def write_makefile( fid, options ):
 
 	tmp = "BEAMER_AUX_EXT=";
 	for ext in options[ 'beamer_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
+
+	tmp = "PKG_AUX_EXT=";
+	for ext in options[ 'pkg_aux_extensions' ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
@@ -1359,42 +1402,53 @@ def write_makefile( fid, options ):
 		fid.write( "\n\n" );
 		fid.write( "# .gitignore\n" );
 		fid.write( ".gitignore:\n" );
-		fid.write( "\techo '# .gitignore' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# .gitignore' >> .gitignore\n" );
 		header = latexmake_header().split( "\n" );
 		for line in header:
-			fid.write( "\techo '" + line + "' >> .gitignore\n" );
-		fid.write( "\techo '' >> .gitignore\n" );
-		fid.write( "\techo '# output files' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '" + line + "' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# output files' >> .gitignore\n" );
 		for ext in [ 'pdf', 'eps', 'ps', 'dvi' ]:
-			fid.write( "\techo ${SOURCE}." + ext + " >> .gitignore\n" );
-		fid.write( "\techo '' >> .gitignore\n" );
-		fid.write( "\techo '# TeX auxiliary files' >> .gitignore\n" );
+			fid.write( "\t${ECHO} ${SOURCE}." + ext + " >> .gitignore\n" );
+			
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# TeX auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'tex_aux_extensions' ]:
-			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
-		fid.write( "\techo '' >> .gitignore\n" );
-		fid.write( "\techo '# beamer auxiliary files' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# beamer auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'beamer_aux_extensions' ]:
-			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
-		fid.write( "\techo '' >> .gitignore\n" );
-		fid.write( "\techo '# bibliography auxiliary files' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# bibliography auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'bib_aux_extensions' ]:
-			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
-		fid.write( "\techo '' >> .gitignore\n" );
-		fid.write( "\techo '# latexmk auxiliary files' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# latexmk auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'latexmk_aux_extensions' ]:
-			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
-		fid.write( "\techo '# converted figures' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );	
+		fid.write( "\t${ECHO} '# package auxiliary files' >> .gitignore\n" );
+		for ext in options[ 'pkg_aux_extensions' ]:
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '# converted figures' >> .gitignore\n" );
 		for ext in options[ 'figure_aux_extensions' ]:
-			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 			for pth in options[ "graphics_paths" ]:
-				fid.write( "\techo '" + os.path.join( pth, \
+				fid.write( "\t${ECHO} '" + os.path.join( pth, \
 					"*-converted-to.pdf" ) + "' >> .gitignore\n" );
-		fid.write( "\techo '# index auxiliary files' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '# index auxiliary files' >> .gitignore\n" );
 		for ext in options[ "idx_aux_extensions" ]:
-			fid.write( "\techo '*" + ext + "' >> .gitignore\n" );
-		fid.write( "\techo '' >> .gitignore\n" );
-		fid.write( "\techo '# mac things' >> .gitignore\n" );
-		fid.write( "\techo '.DS_STORE' >> .gitignore\n" );
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# mac things' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '.DS_STORE' >> .gitignore\n" );
 
 
 
