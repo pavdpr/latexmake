@@ -20,6 +20,9 @@
 #	2014-01-30: Paul Romanczyk
 #	- Initial version (0.0.1)
 #
+#	2014-05-28: Paul Romanczyk
+#	- 
+#
 # TODO:
 #	- Fix ability to read in multiline package commands
 #		+ Strip all newlines?
@@ -56,15 +59,19 @@
 #	
 #
 
-import os;
-import re
-import sys;
-import datetime;
-import platform;
 
+# import other packages
+import os;          # for interacting with files and directories
+import re;          # for parsing strings
+import sys;         # for getting command-line input
+import datetime;    # for adding date stamps
+import platform;    # for determining if a mac to use open
+
+
+# set the version number
 latexmake_version_major = 0;
 latexmake_version_minor = 0;
-latexmake_version_revision = 1;
+latexmake_version_revision = 2;
 
 
 #================================================================================
@@ -75,52 +82,52 @@ latexmake_version_revision = 1;
 
 
 #-------------------------------------------------------------------------------
-class latexmake_invalidInput(RuntimeError):
-   def __init__(self, arg):
+class latexmake_invalidInput( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_invalidInput(RuntimeError)
+# class latexmake_invalidInput( RuntimeError )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-class latexmake_noInput(RuntimeError):
-   def __init__(self, arg):
+class latexmake_noInput( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_noInput(RuntimeError)
+# class latexmake_noInput( RuntimeError )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-class latexmake_invalidBasename(RuntimeError):
-   def __init__(self, arg):
+class latexmake_invalidBasename( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_invalidBasename(RuntimeError)
+# class latexmake_invalidBasename( RuntimeError )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-class latexmake_nonexistantFile(RuntimeError):
-   def __init__(self, arg):
+class latexmake_nonexistantFile( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_invalidBasename(RuntimeError)
+# class latexmake_invalidBasename( RuntimeError )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-class latexmake_invalidArgument(RuntimeError):
-   def __init__(self, arg):
+class latexmake_invalidArgument( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_invalidArgument(RuntimeError)
+# class latexmake_invalidArgument( RuntimeError )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-class latexmake_invalidBracketOrder(RuntimeError):
-   def __init__(self, arg):
+class latexmake_invalidBracketOrder( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_invalidArgument(RuntimeError)
+# class latexmake_invalidArgument( RuntimeError )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-class latexmake_makeDoesNotExist(RuntimeError):
-   def __init__(self, arg):
+class latexmake_makeDoesNotExist( RuntimeError ):
+   def __init__( self, arg ):
       self.args = arg;
-# class latexmake_makeDoesNotExist(RuntimeError)
+# class latexmake_makeDoesNotExist( RuntimeError )
 #-------------------------------------------------------------------------------
 
 
@@ -132,23 +139,23 @@ class latexmake_makeDoesNotExist(RuntimeError):
 
 
 #-------------------------------------------------------------------------------
-def is_exe(fpath):
+def is_exe( fpath ):
 	# used to see if fpath is an executable
 	# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-	return os.path.isfile(fpath) and os.access(fpath, os.X_OK);
+	return os.path.isfile( fpath ) and os.access( fpath, os.X_OK );
 # fed is_exe( fpath )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def functionExists(program):
+def functionExists( program ):
 
-	fpath, fname = os.path.split(program);
+	fpath, fname = os.path.split( program );
 	if fpath:
-		return is_exe(program);
+		return is_exe( program );
 	else:
-		for path in os.environ["PATH"].split(os.pathsep):
-			path = path.strip('"');
-			exe_file = os.path.join(path, program );
+		for path in os.environ[ "PATH" ].split( os.pathsep ):
+			path = path.strip( '"' ); # TODO: see if I can use "\""
+			exe_file = os.path.join( path, program );
 			if is_exe( exe_file ):
 				return True;
 
@@ -157,21 +164,22 @@ def functionExists(program):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def which(program):
+def which( program ):
 	# a unix-like which
 	# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
 
-	fpath, fname = os.path.split(program);
+	fpath, fname = os.path.split( program );
 	if fpath:
-		if is_exe(program):
+		if is_exe( program ):
 			return program;
 	else:
-		for path in os.environ["PATH"].split(os.pathsep):
-			path = path.strip('"');
-			exe_file = os.path.join(path, program);
-			if is_exe(exe_file):
+		for path in os.environ[ "PATH" ].split( os.pathsep ):
+			path = path.strip( '"' );
+			exe_file = os.path.join( path, program );
+			if is_exe( exe_file ):
 				return exe_file;
 
+	# program does not exist, return None
 	return None;
 # fed which( program ) 
 #-------------------------------------------------------------------------------
@@ -186,18 +194,18 @@ def which(program):
 
 #-------------------------------------------------------------------------------
 def latexmake_usage():
-	output = 'latexmake [options] basefilename\n';
-	output += '\t--tex=/path/to/tex compiler\n';
-	output += '\t--bib=/path/to/bib compiler\n';
-	#output += '\t--nooverwrite\t\t\tWill not overwrite a Makefile\n';
+	output = "latexmake [options] basefilename\n";
+	output += "\t--tex=/path/to/tex compiler\n";
+	output += "\t--bib=/path/to/bib compiler\n";
+	#output += "\t--nooverwrite\t\t\tWill not overwrite a Makefile\n";
 	return output
 # fed latexmake_usage()
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def latexmake_copyright():
-	output = 'latexmake\n';
-	output += '\n\tCopyright 2014 Paul Romanczyk\n';
+	output = "latexmake\n";
+	output += "\n\tCopyright 2014 Paul Romanczyk\n";
 	return output
 # fed latexmake_copyright()
 #-------------------------------------------------------------------------------
@@ -205,8 +213,8 @@ def latexmake_copyright():
 #-------------------------------------------------------------------------------
 def latexmake_version():
 	output = \
-	str( latexmake_version_major ) + '.' + \
-	str( latexmake_version_minor ) + '.' + \
+	str( latexmake_version_major ) + "." + \
+	str( latexmake_version_minor ) + "." + \
 	str( latexmake_version_revision );
 	return output;
 # fed latexmake_version()
@@ -297,20 +305,20 @@ def writeLongLines( fid, line, lineLength, tabLength, numTabs, extra ):
 	if numTabs < 0:
 		numTabs = 0;
 
-	tabs = '';
+	tabs = "";
 	for i in range( 0, numTabs ):
 		tabs += "\t";
 
 	if not extra:
-		for l in lines[:-1]:
+		for l in lines[ :-1 ]:
 			fid.write( tabs + l + " \\\n" );
-		fid.write( tabs + lines[-1] + "\n" );
+		fid.write( tabs + lines[ -1 ] + "\n" );
 	else:
 		fid.write( tabs + lines[0] + " \\\n" );
 		tabs += "\t";
-		for l in lines[1:-1]:
+		for l in lines[ 1:-1 ]:
 			fid.write( tabs + l + " \\\n" );
-		fid.write( tabs + lines[-1] + "\n" );
+		fid.write( tabs + lines[ -1 ] + "\n" );
 	return;
 # fed parseLongLines( line, maxLength )
 #-------------------------------------------------------------------------------
@@ -326,7 +334,7 @@ def parseEquals( s ):
 	except latexmake_invalidArgument, e:
 		raise latexmake_invalidArgument( e.args );
 	else:
-		return (left, right);
+		return ( left, right );
 # fed parseEquals( s )
 #-------------------------------------------------------------------------------
 
@@ -641,7 +649,7 @@ def removeTeXcomments( texFile, thisFileName ):
 
 		# remove empty lines as well
 		if len( line ) > 0:
-			loc = line.find( '%' );
+			loc = line.find( "%" );
 			if loc < 0:
 				output += ( line + "\n" );
 			elif loc > 0:
@@ -731,7 +739,7 @@ def findPackages( texFile, params, thisFileName ):
 								"\" cannot be found" );
 
 				elif package == "epstopdf":
-					if params[ 'tex_engine' ] == "PDFLATEX":
+					if params[ "tex_engine" ] == "PDFLATEX":
 						params[ "fig_extensions" ] += ".eps";
 
 				elif package == "makeidx":
@@ -741,14 +749,14 @@ def findPackages( texFile, params, thisFileName ):
 				# 	params[ "make_glossary_in_default" ] = True;
 
 	# update the packages list in params				
-	params[ 'packages' ] += packages;
+	params[ "packages" ] += packages;
 	return params;
 # fed findPackages( texFile, params )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def findGraphicsPaths( texFile, params, thisFileName ):
-	locs = re.findall( r'\\graphicspath\{(.*)\}', texFile );
+	locs = re.findall( r"\\graphicspath\{(.*)\}", texFile );
 	for line in locs:
 		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
 			r"[\{\}]" ):
@@ -767,14 +775,14 @@ def findGraphicsPaths( texFile, params, thisFileName ):
 
 #-------------------------------------------------------------------------------
 def findGraphicsExtensions( texFile, params, thisFileName ):
-	locs = re.findall( r'\\DeclareGraphicsExtensions\{(.*)\}', texFile );
+	locs = re.findall( r"\\DeclareGraphicsExtensions\{(.*)\}", texFile );
 	if not locs:
 		return params;
 	for item in locs:
 		if parseDataInSquiglyBraces( item ):
 			# residual squiglies
 			item = parseDataInSquiglyBraces( item );
-			params[ "fig_extensions"] = parseCommaSeparatedData( item );
+			params[ "fig_extensions" ] = parseCommaSeparatedData( item );
 			#TODO: check to see if I can have a .jpg if the g.e. is just .eps
 	return params;
 # fed findGraphicsExtensions( texFile, params )
@@ -783,7 +791,7 @@ def findGraphicsExtensions( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 def findFigures( texFile, params, thisFileName ):
 	# TODO: also get pgf figures
-	m = re.findall( r'\\includegraphics(\[.*\])?(\{.*\})', texFile );
+	m = re.findall( r"\\includegraphics(\[.*\])?(\{.*\})", texFile );
 	if not m:
 		return params;
 
@@ -948,7 +956,7 @@ def findLocalStyFiles( styname, params, thisFileName ):
 
 #-------------------------------------------------------------------------------
 def parse_latex_file( filename, params ):
-	fid = open( filename, 'r' );
+	fid = open( filename, "r" );
 	if fid < 0:
 		raise latexmake_nonexistantFile( filename );
 
@@ -1017,49 +1025,49 @@ def latexmake_default_params():
 	params[ "makeindex" ] = which( "makeindex" );
 
 
- 	params[ 'tex_engine' ] = "PDFLATEX";
-	params[ 'tex_options' ] = '--file-line-error --synctex=1'; #include synctex to help out TeXShop
-	params[ 'bib_engine' ] = "BIBTEX";
-	params[ 'idx_engine' ] = "MAKEINDEX";
-	params[ 'gls_engine' ] = "MAKEGLOSSARIES";
-	params[ 'make_bib_in_default' ] = False;
-	params[ 'make_index_in_default' ] = False;
+ 	params[ "tex_engine" ] = "PDFLATEX";
+	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
+	params[ "bib_engine" ] = "BIBTEX";
+	params[ "idx_engine" ] = "MAKEINDEX";
+	params[ "gls_engine" ] = "MAKEGLOSSARIES";
+	params[ "make_bib_in_default" ] = False;
+	params[ "make_index_in_default" ] = False;
 	params[ "make_glossary_in_default" ] = False;
-	params[ 'basename' ] = '';
-	params[ 'basepath' ] = os.path.abspath( "." );
-	params[ 'tex_files' ] = [];
-	params[ 'fig_files' ] = [];
-	params[ 'bib_files' ] = [];
-	params[ 'sty_files' ] = [];
-	params[ 'cls_files' ] = [];
-	params[ 'texmf_include_dirs' ] = [];
-	params[ 'output_extension' ] = [ 'pdf' ];
-	params[ 'graphics_paths' ] = [ "." ];
-	params[ 'sub_paths' ] = [];
+	params[ "basename" ] = "";
+	params[ "basepath" ] = os.path.abspath( "." );
+	params[ "tex_files" ] = [];
+	params[ "fig_files" ] = [];
+	params[ "bib_files" ] = [];
+	params[ "sty_files" ] = [];
+	params[ "cls_files" ] = [];
+	params[ "texmf_include_dirs" ] = [];
+	params[ "output_extension" ] = [ "pdf" ];
+	params[ "graphics_paths" ] = [ "." ];
+	params[ "sub_paths" ] = [];
 	# TODO: make a bit more robust for differnt os's
 	if os.path.exists( "~/Libarary/texmf" ):
-		params[ 'texmf_path' ] = "~/Libarary/texmf"
+		params[ "texmf_path" ] = "~/Libarary/texmf"
 	else:
-		params[ 'texmf_path' ] = None;
-	params[ 'has_git' ] = functionExists( 'git' );
-	if params[ 'has_git' ]:
-		params[ 'git' ] = which( "git" );
+		params[ "texmf_path" ] = None;
+	params[ "has_git" ] = functionExists( "git" );
+	if params[ "has_git" ]:
+		params[ "git" ] = which( "git" );
 	else:
-		params[ 'git' ] = "";
+		params[ "git" ] = "";
 	if not functionExists( "make" ):
 		raise latexmake_makeDoesNotExist( "make is not in your path" );
 	else:
-		params[ 'make' ] = which( "make" );
+		params[ "make" ] = which( "make" );
 
- 	params[ 'has_latex2rft' ] = functionExists( 'latex2rtf' );
- 	if params[ 'has_latex2rft' ]:
-		params[ 'latex2rtf' ] = which( "latex2rtf" );
+ 	params[ "has_latex2rft" ] = functionExists( "latex2rtf" );
+ 	if params[ "has_latex2rft" ]:
+		params[ "latex2rtf" ] = which( "latex2rtf" );
 	else:
-		params[ 'latex2rtf' ] = "";
-	params[ 'latex2rtf_options' ] = '-M32';
+		params[ "latex2rtf" ] = "";
+	params[ "latex2rtf_options" ] = "-M32";
 
-	params[ 'rm' ] = which( 'rm' );
-	params[ 'rm_options' ] = '-rf';
+	params[ "rm" ] = which( "rm" );
+	params[ "rm_options" ] = "-rf";
 	params[ "echo" ] = which( "echo" );
 	params[ "find" ] = which( "find" );
 	if ( platform.system() == "Darwin" ):
@@ -1068,35 +1076,35 @@ def latexmake_default_params():
 	else:
 		params[ "use_open" ] = False;
 
-	params[ 'packages' ] = [];
-	params[ 'use_absolute_file_paths' ] = False;
-	params[ 'use_absolute_executable_paths' ] = True;
+	params[ "packages" ] = [];
+	params[ "use_absolute_file_paths" ] = False;
+	params[ "use_absolute_executable_paths" ] = True;
 	params[ "verbose" ] = False;
 
 	# set extensions
-	params[ 'fig_extensions' ] = [ ".pdf", ".png", ".jpg", ".jpeg" ];
-	params[ 'tex_aux_extensions' ] = [ '.aux', '.toc', '.lof', '.lot', \
-	'.lof', '.log', '.synctex.*' ];
-	params[ 'beamer_aux_extensions' ] =	[ '.nav', '.vrb', '.snm', '.out' ];
-	params[ 'bib_aux_extensions' ] = [ '.bbl', '.blg', '.bcf', '.run.xml', \
-	'-blx.bib' ];
-	params[ 'figure_aux_extensions' ] = [ '-converted-to.pdf' ];
-	params[ 'idx_aux_extensions' ] = [ '.ilg', '.ind' ];
-	params[ 'latexmk_aux_extensions' ] = [ '.fdb_latexmk', '.fls' ];
-	params[ 'glossary_aux_extensions' ] = [ '.acn', '.acr', '.alg', '.glg', \
-		'.glo', '.gls', '.ist', '.lem', '.glsdefs' ];
-	params[ 'pkg_aux_extensions' ] = [];
+	params[ "fig_extensions" ] = [ ".pdf", ".png", ".jpg", ".jpeg" ];
+	params[ "tex_aux_extensions" ] = [ ".aux", ".toc", ".lof", ".lot", \
+	".lof", ".log", ".synctex.*" ];
+	params[ "beamer_aux_extensions" ] =	[ ".nav", ".vrb", ".snm", ".out" ];
+	params[ "bib_aux_extensions" ] = [ ".bbl", ".blg", ".bcf", ".run.xml", \
+	"-blx.bib" ];
+	params[ "figure_aux_extensions" ] = [ "-converted-to.pdf" ];
+	params[ "idx_aux_extensions" ] = [ ".ilg", ".ind" ];
+	params[ "latexmk_aux_extensions" ] = [ ".fdb_latexmk", ".fls" ];
+	params[ "glossary_aux_extensions" ] = [ ".acn", ".acr", ".alg", ".glg", \
+		".glo", ".gls", ".ist", ".lem", ".glsdefs" ];
+	params[ "pkg_aux_extensions" ] = [];
 
-	params[ 'clean_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
-	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
-	params[ 'latexmk_aux_extensions' ] + params[ 'idx_aux_extensions' ] + \
-	params[ 'glossary_aux_extensions' ] + params[ 'pkg_aux_extensions' ];
+	params[ "clean_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
+	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
+	params[ "latexmk_aux_extensions" ] + params[ "idx_aux_extensions" ] + \
+	params[ "glossary_aux_extensions" ] + params[ "pkg_aux_extensions" ];
 
-	params[ 'all_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
-	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
-	params[ 'figure_aux_extensions' ] + params[ 'latexmk_aux_extensions' ] + \
-	params[ 'idx_aux_extensions' ] + params[ 'pkg_aux_extensions' ] + \
-	params[ 'glossary_aux_extensions' ];
+	params[ "all_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
+	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
+	params[ "figure_aux_extensions" ] + params[ "latexmk_aux_extensions" ] + \
+	params[ "idx_aux_extensions" ] + params[ "pkg_aux_extensions" ] + \
+	params[ "glossary_aux_extensions" ];
 	return params;
 # fed latexmake_default_params()
 #-------------------------------------------------------------------------------
@@ -1104,7 +1112,7 @@ def latexmake_default_params():
 #-------------------------------------------------------------------------------
 def latexmake_finalize_params( params ):
 	# set file paths to absolute or relative
-	if params[ 'use_absolute_file_paths' ]:
+	if params[ "use_absolute_file_paths" ]:
 		#use absolute paths
 		params[ "basepath" ] = os.path.abspath( params[ "basepath" ] );
 		params[ "tex_files" ] = [ os.path.abspath( path ) \
@@ -1191,10 +1199,10 @@ def write_makefile( fid, options ):
 
 	# write the tex engines
 	fid.write( "# TeX commands\n" );
-	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + '}\n' );
-	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + '\n' );
-	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + '}\n' );
-	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + '}\n' );
+	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + "}\n" );
+	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
+	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + "}\n" );
+	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + "}\n" );
 	fid.write( "GLS_ENGINE=${" + options[ "gls_engine" ] + "}\n" );
 	fid.write( "\n" );
 	# write the other enigines of other uitilies
@@ -1211,39 +1219,39 @@ def write_makefile( fid, options ):
 	fid.write( "\n" );
 
 	fid.write( "# Source Files\n" );
-	fid.write( "SOURCE=" + options[ "basename" ] + '\n' );
+	fid.write( "SOURCE=" + options[ "basename" ] + "\n" );
 	fid.write( "\n" );
 
 	tmp = "TEX_FILES=";
-	for f in options[ 'tex_files' ]:
+	for f in options[ "tex_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "BIB_FILES=";
-	for f in options[ 'bib_files' ]:
+	for f in options[ "bib_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "FIG_FILES=";
-	for f in options[ 'fig_files' ]:
+	for f in options[ "fig_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "STY_FILES=";
-	for f in options[ 'sty_files' ]:
+	for f in options[ "sty_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "CLS_FILES=";
-	for f in options[ 'cls_files' ]:
+	for f in options[ "cls_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp, 80, 8, 0, False );
@@ -1262,7 +1270,7 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
-	fid.write( "CLEANDIRS = $(SUB_PATHS:%=clean-%)\n");
+	fid.write( "CLEANDIRS = $(SUB_PATHS:%=clean-%)\n" );
 	fid.write( "\n" );
 
 	# extensions
@@ -1270,14 +1278,14 @@ def write_makefile( fid, options ):
 	fid.write( "\n" );
 	fid.write( "# Sets of extensions\n" );
 	tmp = "TEX_AUX_EXT=";
-	for ext in options[ 'tex_aux_extensions' ]:
+	for ext in options[ "tex_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "BIB_AUX_EXT=";
-	for ext in options[ 'bib_aux_extensions' ]:
+	for ext in options[ "bib_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
@@ -1285,42 +1293,42 @@ def write_makefile( fid, options ):
 
 	tmp = "FIG_AUX_EXT=";
 	for pth in options[ "graphics_paths" ]:
-		for ext in options[ 'figure_aux_extensions' ]:
+		for ext in options[ "figure_aux_extensions" ]:
 			tmp += ( " " + os.path.join( pth, "*" + ext ) );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "IDX_AUX_EXT=";
-	for ext in options[ 'idx_aux_extensions' ]:
+	for ext in options[ "idx_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "BEAMER_AUX_EXT=";
-	for ext in options[ 'beamer_aux_extensions' ]:
+	for ext in options[ "beamer_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "GLS_AUX_EXT=";
-	for ext in options[ 'glossary_aux_extensions' ]:
+	for ext in options[ "glossary_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "PKG_AUX_EXT=";
-	for ext in options[ 'pkg_aux_extensions' ]:
+	for ext in options[ "pkg_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
 	tmp = "ALL_AUX_EXT=";
-	for ext in options[ 'all_aux_extensions' ]:
+	for ext in options[ "all_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
@@ -1343,7 +1351,7 @@ def write_makefile( fid, options ):
 	fid.write( "# all extensions\n" );
 	fid.write( ".PHONY: all\n" );
 	fid.write( "all: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}" );
-	exts = options[ 'output_extension' ];
+	exts = options[ "output_extension" ];
 	for ext in exts[ 1: ]:
 		fid.write( " ${SOURCE}." + ext );
 	fid.write( "\n" );
@@ -1362,7 +1370,7 @@ def write_makefile( fid, options ):
 		fid.write( "\t${MAKE} -e view\n" );
 
 	# write the code to make the main part of the makefile
-	for ext in options[ 'output_extension' ]:
+	for ext in options[ "output_extension" ]:
 		fid.write( "\n\n" );
 		fid.write( "# the " + ext + " file\n" );
 		fid.write( "${SOURCE}." + ext + ": ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
@@ -1377,15 +1385,15 @@ def write_makefile( fid, options ):
 	# final is the last 2 latex compiles
 	fid.write( "\n\n" );
 	fid.write( "# final is the last 2 latex compiles\n" );
-	fid.write( '.PHONY: final\n');
-	fid.write( 'final: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n');
+	fid.write( ".PHONY: final\n" );
+	fid.write( "final: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}.tex\n" );
 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}.tex\n" );
 
 	# update does not run the first latex
 	fid.write( "\n\n" );
 	fid.write( "# update is the last 2 latex compiles\n" );
-	fid.write( '.PHONY: update\n');
+	fid.write( ".PHONY: update\n" );
 	fid.write( "update: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
 	if options[ "make_bib_in_default" ] or options[ "make_index_in_default" ]:
 		if options[ "make_bib_in_default" ]:
@@ -1397,24 +1405,24 @@ def write_makefile( fid, options ):
 	# bibliography
 	fid.write( "\n\n" );
 	fid.write( "# make a bibliography\n" );
-	fid.write( '.PHONY: bibliography\n');
-	fid.write( 'bibliography: ${SOURCE}.aux ${TEX_FILES} ${BIB_FILES}\n');
+	fid.write( ".PHONY: bibliography\n" );
+	fid.write( "bibliography: ${SOURCE}.aux ${TEX_FILES} ${BIB_FILES}\n" );
 	fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
 	fid.write( "\t${MAKE} -e final\n" );
 
 	# glossary
 	fid.write( "\n\n" );
 	fid.write( "# make a glossary\n" );
-	fid.write( '.PHONY: glossary\n');
-	fid.write( 'glossary: ${SOURCE}.aux ${TEX_FILES}\n');
+	fid.write( ".PHONY: glossary\n" );
+	fid.write( "glossary: ${SOURCE}.aux ${TEX_FILES}\n" );
 	fid.write( "\t${GLS_ENGINE} ${SOURCE}\n" );
 	fid.write( "\t${MAKE} -e final\n" );
 
 	# index
 	fid.write( "\n\n" );
 	fid.write( "# make a bibliography\n" );
-	fid.write( '.PHONY: index\n');
-	fid.write( 'index: ${SOURCE}.aux ${TEX_FILES}\n');
+	fid.write( ".PHONY: index\n" );
+	fid.write( "index: ${SOURCE}.aux ${TEX_FILES}\n" );
 	fid.write( "\t${IDX_ENGINE} ${SOURCE}\n" );
 	fid.write( "\t{MAKE} -e final\n" );
 
@@ -1424,8 +1432,8 @@ def write_makefile( fid, options ):
 	if options[ "use_open" ]:
 		fid.write( "\n\n" );
 		fid.write( "# Open the output file\n" );
-		fid.write( '.PHONY: view\n');
-		fid.write( 'view: ${SOURCE}.pdf\n');
+		fid.write( ".PHONY: view\n" );
+		fid.write( "view: ${SOURCE}.pdf\n" );
 		fid.write( "\t${OPEN} ${SOURCE}.pdf\n" );
 
 	# aux file / init
@@ -1438,15 +1446,15 @@ def write_makefile( fid, options ):
 	# clean
 	fid.write( "\n\n" );
 	fid.write( "# clean auxiliary files\n" );
-	fid.write( '.PHONY: clean\n');
-	fid.write( 'clean:\n');
+	fid.write( ".PHONY: clean\n" );
+	fid.write( "clean:\n" );
 	fid.write( "\t${RM} ${RMO} ${ALL_AUX_EXT}\n" );
 
 	# cleanall
 	fid.write( "\n\n" );
 	fid.write( "# clean all output files\n" );
-	fid.write( '.PHONY: cleanall\n');
-	fid.write( 'cleanall:\n');
+	fid.write( ".PHONY: cleanall\n" );
+	fid.write( "cleanall:\n" );
 	tmp = "${RM} ${RMO} ${ALL_AUX_EXT}";
 	for ext in [ "dvi", "ps", "eps", "pdf" ]:
 		tmp += ( " ${SOURCE}." + ext );
@@ -1456,22 +1464,22 @@ def write_makefile( fid, options ):
 	# clean general
 	fid.write( "\n\n" );
 	fid.write( "# clean general auxiliary files\n" );
-	fid.write( '.PHONY: cleangeneral\n');
-	fid.write( 'cleangeneral:\n');
+	fid.write( ".PHONY: cleangeneral\n" );
+	fid.write( "cleangeneral:\n" );
 	fid.write( "\t${RM} ${RMO} ${TEX_AUX_EXT}\n" );
 
 	# clean beamer
 	fid.write( "\n\n" );
 	fid.write( "# clean beamer auxiliary files\n" );
-	fid.write( '.PHONY: cleanbeamer\n');
-	fid.write( 'cleanbeamer:\n');
+	fid.write( ".PHONY: cleanbeamer\n" );
+	fid.write( "cleanbeamer:\n" );
 	fid.write( "\t${RM} ${RMO} ${BEAMER_AUX_EXT}\n" );
 
 	# clean bib
 	fid.write( "\n\n" );
 	fid.write( "# clean bibliography auxiliary files\n" );
-	fid.write( '.PHONY: cleanbib\n');
-	fid.write( 'cleanbib:\n');
+	fid.write( ".PHONY: cleanbib\n" );
+	fid.write( "cleanbib:\n" );
 	fid.write( "\t${RM} ${RMO} ${BIB_AUX_EXT}\n" );
 
 	# clean figs
@@ -1495,7 +1503,7 @@ def write_makefile( fid, options ):
 
 
 	if options[ "has_git" ]:
-		# git backup with message 'bkup'
+		# git backup with message "bkup"
 		fid.write( "\n\n" );
 		fid.write( "# git backup\n" );
 		fid.write( ".PHONY: gitbkup\n" );
@@ -1584,7 +1592,7 @@ def latexmake_parse_inputs():
 	args = sys.argv;
 	try:
 		if not args:
-			raise latexmake_noInput( "no inputs from latexmake_parse_inputs()\n");
+			raise latexmake_noInput( "no inputs from latexmake_parse_inputs()\n" );
 		# set the default parameters
 		output = latexmake_default_params();
 
@@ -1611,7 +1619,7 @@ def latexmake_parse_inputs():
 			raise latexmake_invalidBasename( tmp );
 		else:
 			tmp = tmp[ :idx ]
-		output[ 'basename' ] = tmp;
+		output[ "basename" ] = tmp;
 
 		for arg in args[1:-1]:
 			if arg.find( "--tex=" ) == 0:
@@ -1646,11 +1654,14 @@ def main():
 	params = parse_latex_file( params[ "basename" ] + ".tex", params );
 
 	# open the Makefile
-	fid = open( 'Makefile', 'w' );
+	fid = open( "Makefile", "w" );
 
 	# write the Makefile
-	write_makefile( fid, params );		# close the makefile
+	write_makefile( fid, params );		
+
+	# close the makefile
 	fid.close();
+
 	return;
 #fed main()
 #-------------------------------------------------------------------------------
