@@ -60,7 +60,7 @@ import os;
 import re
 import sys;
 import datetime;
-
+import platform;
 
 latexmake_version_major = 0;
 latexmake_version_minor = 0;
@@ -725,17 +725,20 @@ def findPackages( texFile, params, thisFileName ):
 							if opt[ 0 ] == "backend":
 								backend = opt[ 1 ];
 						if functionExists( backend ):
-							params[ "bib_engine" ] = which( backend );
+							params[ "bib_engine" ] = backend.upper();
 						else:
 							warning( "The bibliography backend \"" + backend + \
 								"\" cannot be found" );
 
 				elif package == "epstopdf":
-					if params[ 'tex_engine' ] == "pdflatex":
+					if params[ 'tex_engine' ] == "PDFLATEX":
 						params[ "fig_extensions" ] += ".eps";
 
 				elif package == "makeidx":
 					params[ "make_index_in_default" ] = True;
+
+				# elif package == "glossaries":
+				# 	params[ "make_glossary_in_default" ] = True;
 
 	# update the packages list in params				
 	params[ 'packages' ] += packages;
@@ -895,6 +898,20 @@ def findBibliographies( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
+def findGlossary( texFile, params, thisFileName ):
+	if "glossaries" not in params[ "packages" ]:
+		# if glossary package is not defined, we cannot have a glossary
+		return params;
+
+	key = re.compile( r"\\makeglossaries" );
+	hasGloss = key.search( texFile );
+	if hasGloss:
+		params[ "make_glossary_in_default" ] = True;
+	return params;
+# fed findGlossary( texFile, params, thisFileName )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 def findLocalClsFiles( clsname, params, thisFileName ):
 	# TODO: impliment
 	# TODO: also look in texmfpath for non-standard cls files
@@ -964,6 +981,9 @@ def parse_latex_file( filename, params ):
 	# search for bibliographies
 	params = findBibliographies( texFile, params, filename );
 
+	# search to see if we are makeing a glossary
+	params = findGlossary( texFile, params, filename );
+
 	return params;
 
 # fed parse_latex_file( file )
@@ -980,12 +1000,31 @@ def parse_latex_file( filename, params ):
 #-------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
-	params[ 'tex_engine' ] = which( 'pdflatex' );
-	params[ 'tex_options' ] = '--file-line-error';
-	params[ 'bib_engine' ] = which( 'bibtex' );
-	params[ 'idx_engine' ] = which( 'makeindex' );
+	params[ "tex" ] = which( "tex" );
+	params[ "latex" ] = which( "latex" );
+	params[ "pdflatex" ] = which( "pdflatex" );
+	params[ "luatex" ] = which( "luatex" );
+	params[ "lualatex" ] = which( "lualatex" );
+	params[ "xelatex" ] = which( "xelatex" );
+	params[ "xetex" ] = which( "xelatex" );
+	params[ "bibtex" ] = which( "bibtex" );
+	params[ "biber" ] = which( "biber" );
+	params[ "dvips" ] = which( "dvips" );
+	params[ "ps2eps" ] = which( "ps2eps" );
+	params[ "pstopdf" ] = which( "pstopdf" );
+	params[ "epstopdf" ] = which( "epstopdf" );
+	params[ "makeglossaries" ] = which( "makeglossaries" );
+	params[ "makeindex" ] = which( "makeindex" );
+
+
+ 	params[ 'tex_engine' ] = "PDFLATEX";
+	params[ 'tex_options' ] = '--file-line-error --synctex=1'; #include synctex to help out TeXShop
+	params[ 'bib_engine' ] = "BIBTEX";
+	params[ 'idx_engine' ] = "MAKEINDEX";
+	params[ 'gls_engine' ] = "MAKEGLOSSARIES";
 	params[ 'make_bib_in_default' ] = False;
 	params[ 'make_index_in_default' ] = False;
+	params[ "make_glossary_in_default" ] = False;
 	params[ 'basename' ] = '';
 	params[ 'basepath' ] = os.path.abspath( "." );
 	params[ 'tex_files' ] = [];
@@ -1007,9 +1046,10 @@ def latexmake_default_params():
 		params[ 'git' ] = which( "git" );
 	else:
 		params[ 'git' ] = "";
-	params[ 'make' ] = which( "make" );
 	if not functionExists( "make" ):
 		raise latexmake_makeDoesNotExist( "make is not in your path" );
+	else:
+		params[ 'make' ] = which( "make" );
 
  	params[ 'has_latex2rft' ] = functionExists( 'latex2rtf' );
  	if params[ 'has_latex2rft' ]:
@@ -1021,6 +1061,12 @@ def latexmake_default_params():
 	params[ 'rm' ] = which( 'rm' );
 	params[ 'rm_options' ] = '-rf';
 	params[ "echo" ] = which( "echo" );
+	params[ "find" ] = which( "find" );
+	if ( platform.system() == "Darwin" ):
+		params[ "use_open" ] = True;
+		params[ "open" ] = which( "open" );
+	else:
+		params[ "use_open" ] = False;
 
 	params[ 'packages' ] = [];
 	params[ 'use_absolute_file_paths' ] = False;
@@ -1037,17 +1083,20 @@ def latexmake_default_params():
 	params[ 'figure_aux_extensions' ] = [ '-converted-to.pdf' ];
 	params[ 'idx_aux_extensions' ] = [ '.ilg', '.ind' ];
 	params[ 'latexmk_aux_extensions' ] = [ '.fdb_latexmk', '.fls' ];
-	params[ 'pkg_aux_extensions' ] = [ '.glsdefs' ];
+	params[ 'glossary_aux_extensions' ] = [ '.acn', '.acr', '.alg', '.glg', \
+		'.glo', '.gls', '.ist', '.lem', '.glsdefs' ];
+	params[ 'pkg_aux_extensions' ] = [];
 
 	params[ 'clean_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
 	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
 	params[ 'latexmk_aux_extensions' ] + params[ 'idx_aux_extensions' ] + \
-	params[ 'pkg_aux_extensions' ];
+	params[ 'glossary_aux_extensions' ] + params[ 'pkg_aux_extensions' ];
 
 	params[ 'all_aux_extensions' ] = params[ 'tex_aux_extensions' ] + \
 	params[ 'beamer_aux_extensions' ] + params[ 'bib_aux_extensions' ] + \
 	params[ 'figure_aux_extensions' ] + params[ 'latexmk_aux_extensions' ] + \
-	params[ 'idx_aux_extensions' ] + params[ 'pkg_aux_extensions' ];
+	params[ 'idx_aux_extensions' ] + params[ 'pkg_aux_extensions' ] + \
+	params[ 'glossary_aux_extensions' ];
 	return params;
 # fed latexmake_default_params()
 #-------------------------------------------------------------------------------
@@ -1094,9 +1143,10 @@ def latexmake_finalize_params( params ):
 	# set exicutible paths to absolute or relative
 	if params[ "use_absolute_executable_paths" ]:
 		# use absolute paths
-		params[ 'rm' ] = os.path.abspath( params[ 'rm' ] );
-		params[ 'make' ] = os.path.abspath( params[ 'make' ] );
+		params[ "rm" ] = os.path.abspath( params[ "rm" ] );
+		params[ "make" ] = os.path.abspath( params[ "make" ] );
 		params[ "echo" ] = os.path.abspath( params[ "echo" ] );
+		params[ "find" ] = os.path.abspath( params[ "find" ] );
 		pass;
 	else:
 		# use relative paths
@@ -1119,12 +1169,33 @@ def write_makefile( fid, options ):
 	fid.write( latexmake_header() );
 	fid.write( "\n\n" ); 
 
+	# TeX commands
+	fid.write( "# TeX commands (MODIFY AT YOUR OWN RISK)\n" );
+	fid.write( "TEX=" + options[ "tex" ] + "\n" );
+	fid.write( "LATEX=" + options[ "latex" ] + "\n" );
+	fid.write( "PDFLATEX=" + options[ "pdflatex" ] + "\n" );
+	fid.write( "LUATEX=" + options[ "luatex" ] + "\n" );
+	fid.write( "LUALATEX=" + options[ "lualatex" ] + "\n" );
+	fid.write( "XELATEX=" + options[ "xelatex" ] + "\n" );
+	fid.write( "XETEX=" + options[ "xetex" ] + "\n" );
+	fid.write( "BIBTEX=" + options[ "bibtex" ] + "\n" );
+	fid.write( "BIBER=" + options[ "biber" ] + "\n" );
+	fid.write( "DVIPS=" + options[ "dvips" ] + "\n" );
+	fid.write( "PS2EPS=" + options[ "ps2eps" ] + "\n" );
+	fid.write( "PSTOPDF=" + options[ "pstopdf" ] + "\n" );
+	fid.write( "EPSTOPDF=" + options[ "epstopdf" ] + "\n" );
+	fid.write( "MAKEGLOSSARIES=" + options[ "makeglossaries" ] + "\n" );
+	fid.write( "MAKEINDEX=" + options[ "makeindex" ] + "\n" );
+	fid.write( "# end TeX commands\n" );
+	fid.write( "\n\n" );
+
 	# write the tex engines
 	fid.write( "# TeX commands\n" );
-	fid.write( "TEX_ENGINE=" + options[ "tex_engine" ] + '\n' );
+	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + '}\n' );
 	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + '\n' );
-	fid.write( "BIB_ENGINE=" + options[ "bib_engine" ] + '\n' );
-	fid.write( "IDX_ENGINE=" + options[ "idx_engine" ] + '\n' );
+	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + '}\n' );
+	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + '}\n' );
+	fid.write( "GLS_ENGINE=${" + options[ "gls_engine" ] + "}\n" );
 	fid.write( "\n" );
 	# write the other enigines of other uitilies
 	fid.write( "# commands\n" )
@@ -1132,8 +1203,11 @@ def write_makefile( fid, options ):
 	fid.write( "RM=" + options[ "rm" ] + "\n" );
 	fid.write( "RMO=" + options[ "rm_options" ] + "\n" );
 	fid.write( "ECHO=" + options[ "echo" ] + "\n" );
+	fid.write( "FIND=" + options[ "find" ] + "\n" );
 	if options[ "has_git" ]:
 		fid.write( "GIT=" + options[ "git" ] + "\n" );
+	if options[ "use_open" ]:
+		fid.write( "OPEN=" + options[ "open" ] + "\n" );
 	fid.write( "\n" );
 
 	fid.write( "# Source Files\n" );
@@ -1231,6 +1305,13 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
+	tmp = "GLS_AUX_EXT=";
+	for ext in options[ 'glossary_aux_extensions' ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
+
 	tmp = "PKG_AUX_EXT=";
 	for ext in options[ 'pkg_aux_extensions' ]:
 		tmp += ( " *" + ext );
@@ -1266,14 +1347,19 @@ def write_makefile( fid, options ):
 	for ext in exts[ 1: ]:
 		fid.write( " ${SOURCE}." + ext );
 	fid.write( "\n" );
-	if options[ "make_bib_in_default" ] or options[ "make_index_in_default" ]:
+	if ( options[ "make_bib_in_default" ] or \
+		options[ "make_index_in_default" ] or \
+		options[ "make_glossary_in_default" ] ):
 		fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}.tex\n" );
 		if options[ "make_bib_in_default" ]:
 			fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
 		if options[ "make_index_in_default" ]:
 			fid.write( "\t${IDX_ENGINE} ${SOURCE}\n" );
-			# TODO: add index engine
+		if options[ "make_glossary_in_default" ]:
+			fid.write( "\t${GLS_ENGINE} ${SOURCE}\n" );
 	fid.write( "\t${MAKE} -e final\n" );
+	if options[ "use_open" ]:
+		fid.write( "\t${MAKE} -e view\n" );
 
 	# write the code to make the main part of the makefile
 	for ext in options[ 'output_extension' ]:
@@ -1285,7 +1371,7 @@ def write_makefile( fid, options ):
 			if options[ "make_bib_in_default" ]:
 				fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
 			if options[ "make_index_in_default" ]:
-				pass;
+				fid.write( "\t${GLS_ENGINE} ${SOURCE}\n" );
 		fid.write( "\t${MAKE} -e final\n" );
 
 	# final is the last 2 latex compiles
@@ -1296,12 +1382,32 @@ def write_makefile( fid, options ):
 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}.tex\n" );
 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}.tex\n" );
 
+	# update does not run the first latex
+	fid.write( "\n\n" );
+	fid.write( "# update is the last 2 latex compiles\n" );
+	fid.write( '.PHONY: update\n');
+	fid.write( "update: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
+	if options[ "make_bib_in_default" ] or options[ "make_index_in_default" ]:
+		if options[ "make_bib_in_default" ]:
+			fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
+		if options[ "make_index_in_default" ]:
+			fid.write( "\t${GLS_ENGINE} ${SOURCE}\n" );
+	fid.write( "\t${MAKE} -e final\n" );
+
 	# bibliography
 	fid.write( "\n\n" );
 	fid.write( "# make a bibliography\n" );
 	fid.write( '.PHONY: bibliography\n');
 	fid.write( 'bibliography: ${SOURCE}.aux ${TEX_FILES} ${BIB_FILES}\n');
 	fid.write( "\t${BIB_ENGINE} ${SOURCE}\n" );
+	fid.write( "\t${MAKE} -e final\n" );
+
+	# glossary
+	fid.write( "\n\n" );
+	fid.write( "# make a glossary\n" );
+	fid.write( '.PHONY: glossary\n');
+	fid.write( 'glossary: ${SOURCE}.aux ${TEX_FILES}\n');
+	fid.write( "\t${GLS_ENGINE} ${SOURCE}\n" );
 	fid.write( "\t${MAKE} -e final\n" );
 
 	# index
@@ -1314,6 +1420,13 @@ def write_makefile( fid, options ):
 
 	# some other builds that might be needed
 
+	# open (on OS X)
+	if options[ "use_open" ]:
+		fid.write( "\n\n" );
+		fid.write( "# Open the output file\n" );
+		fid.write( '.PHONY: view\n');
+		fid.write( 'view: ${SOURCE}.pdf\n');
+		fid.write( "\t${OPEN} ${SOURCE}.pdf\n" );
 
 	# aux file / init
 	fid.write( "\n\n" );
@@ -1436,6 +1549,11 @@ def write_makefile( fid, options ):
 		for ext in options[ 'pkg_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );	
+		fid.write( "\t${ECHO} '# glossary auxiliary files' >> .gitignore\n" );
+		for ext in options[ 'glossary_aux_extensions' ]:
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
 		fid.write( "\t${ECHO} '# converted figures' >> .gitignore\n" );
 		for ext in options[ 'figure_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
@@ -1451,7 +1569,12 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '.DS_STORE' >> .gitignore\n" );
 
 
-
+	# tools
+	fid.write( "\n\n" );
+	fid.write( "# tools\n" );
+	fid.write( ".PHONY: rmlog\n" );
+	fid.write( "rmlog:\n" );
+	fid.write( "\t${FIND} . -name '*.log' -exec ${RM} ${RMO} {} \;\n" );
 	return;
 # fed write_makefile( fid )
 #-------------------------------------------------------------------------------
