@@ -21,7 +21,7 @@
 #	- Initial version (0.0.1)
 #
 #	2014-05-28: Paul Romanczyk
-#	- 
+#	- Working on latexdiff stuff
 #
 # TODO:
 #	- Fix ability to read in multiline package commands
@@ -29,6 +29,15 @@
 #	- Add in latexdiff support
 #		+ use gitlatexdiff https://github.com/daverted/gitlatexdiff as an example
 #	- Add in git support
+#
+# REQUIRED TOOLS:
+#	make         http://www.gnu.org/software/make/
+#   
+# OPTIONAL TOOLS:
+#	git          http://git-scm.com
+#	latex2rtf    http://latex2rtf.sourceforge.net
+#	latexdiff    http://latexdiff.berlios.de
+#	latexpand    http://www.ctan.org/pkg/latexpand
 #
 # LICENSE
 # 	The MIT License (MIT)
@@ -1008,6 +1017,10 @@ def parse_latex_file( filename, params ):
 #-------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
+
+	params[ "makediff" ] = True;
+	params[ "verbose" ] = False;
+
 	params[ "tex" ] = which( "tex" );
 	params[ "latex" ] = which( "latex" );
 	params[ "pdflatex" ] = which( "pdflatex" );
@@ -1023,7 +1036,6 @@ def latexmake_default_params():
 	params[ "epstopdf" ] = which( "epstopdf" );
 	params[ "makeglossaries" ] = which( "makeglossaries" );
 	params[ "makeindex" ] = which( "makeindex" );
-
 
  	params[ "tex_engine" ] = "PDFLATEX";
 	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
@@ -1054,16 +1066,69 @@ def latexmake_default_params():
 		params[ "git" ] = which( "git" );
 	else:
 		params[ "git" ] = "";
+		params[ "makediff" ] = False;
+		print "Warning!";
+		print "  git does not exist.";
+		print "  Download from ";
+		print "  The following makefile options will not be built:";
+		print "    gitbkup";
+		print "    .git";
+		print "    .gitignore";
+		print "    diff";
+	params[ "has_latexpand" ] = functionExists( "latexpand" );
+	if params[ "has_latexpand" ]:
+		params[ "latexpand" ] = which( "latexpand" );
+	else:
+		params[ "latexpand" ] = "";
+		params[ "makediff" ] = False;
+		print "Warning!";
+		print "  latexpand does not exist.";
+		print "  Download from http://www.ctan.org/pkg/latexpand";
+		print "  The following makefile options will not be built:";
+		print "    diff";
+		print "    onefile";
+
+		
+
 	if not functionExists( "make" ):
 		raise latexmake_makeDoesNotExist( "make is not in your path" );
 	else:
 		params[ "make" ] = which( "make" );
+
+	params[ "has_latexdiff" ] = functionExists( "latexdiff" );
+	if params[ "has_latexdiff" ]:
+		params[ "latexdiff" ] = which( "latexdiff" );
+	else:
+		params[ "latexdiff" ] = "";
+		params[ "makediff" ] = False;
+		print "Warning!";
+		print "  latexdiff does not exist.";
+		print "  Download from http://latexdiff.berlios.de/";
+		print "  The following makefile options will not be built:";
+		print "    diff";
+
+	params[ "has_mktemp" ] = functionExists( "mktemp" );
+	if params[ "has_mktemp" ]:
+		params[ "mktemp" ] = which( "mktemp" );
+	else:
+		params[ "mktemp" ] = "";
+		params[ "makediff" ] = False;
+		print "Warning!";
+		print "  mktemp does not exist.";
+		print "  The following makefile options will not be built:";
+		print "    diff";
+
 
  	params[ "has_latex2rft" ] = functionExists( "latex2rtf" );
  	if params[ "has_latex2rft" ]:
 		params[ "latex2rtf" ] = which( "latex2rtf" );
 	else:
 		params[ "latex2rtf" ] = "";
+		print "Warning!";
+		print "  latex2rtf does not exist.";
+		print "  Download from http://latex2rtf.sourceforge.net/";
+		print "  The following makefile options will not be built:";
+		print "    rtf";
 	params[ "latex2rtf_options" ] = "-M32";
 
 	params[ "rm" ] = which( "rm" );
@@ -1079,7 +1144,7 @@ def latexmake_default_params():
 	params[ "packages" ] = [];
 	params[ "use_absolute_file_paths" ] = False;
 	params[ "use_absolute_executable_paths" ] = True;
-	params[ "verbose" ] = False;
+	
 
 	# set extensions
 	params[ "fig_extensions" ] = [ ".pdf", ".png", ".jpg", ".jpeg" ];
@@ -1194,11 +1259,14 @@ def write_makefile( fid, options ):
 	fid.write( "EPSTOPDF=" + options[ "epstopdf" ] + "\n" );
 	fid.write( "MAKEGLOSSARIES=" + options[ "makeglossaries" ] + "\n" );
 	fid.write( "MAKEINDEX=" + options[ "makeindex" ] + "\n" );
+	fid.write( "LATEXDIFF=" + options[ "latexdiff" ] + "\n" );
+	fid.write( "LATEXPAND=" + options[ "latexpand" ] + "\n" );
+	fid.write( "LATEX2RTF=" + options[ "latex2rtf" ] + "\n" );
 	fid.write( "# end TeX commands\n" );
 	fid.write( "\n\n" );
 
 	# write the tex engines
-	fid.write( "# TeX commands\n" );
+	fid.write( "# TeX commands and options\n" );
 	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + "}\n" );
 	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
 	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + "}\n" );
@@ -1216,6 +1284,8 @@ def write_makefile( fid, options ):
 		fid.write( "GIT=" + options[ "git" ] + "\n" );
 	if options[ "use_open" ]:
 		fid.write( "OPEN=" + options[ "open" ] + "\n" );
+	if options[ "has_mktemp" ]:
+		fid.write( "MKTEMP=" + options[ "mktemp" ] + "\n" );
 	fid.write( "\n" );
 
 	fid.write( "# Source Files\n" );
@@ -1338,9 +1408,12 @@ def write_makefile( fid, options ):
 		"########################################\n" );
 	fid.write( "########################################" + \
 		"########################################\n" );
-	fid.write( "##\n" );
-	fid.write( "##\tNo changes should have to be made after here\n" );
-	fid.write( "##\n" );
+	fid.write( "##                                      " + \
+		"                                      ##\n" );
+	fid.write( "##         No changes should have to be " + \
+		"made after here                       ##\n" );
+	fid.write( "##                                      " + \
+		"                                      ##\n" );
 	fid.write( "########################################" + \
 		"########################################\n" );
 	fid.write( "########################################" + \
@@ -1575,6 +1648,66 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# mac things' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '.DS_STORE' >> .gitignore\n" );
+
+	if options[ "makediff" ]:
+		# right now will use the master branch of .
+		# latex diff
+		fid.write( "\n\n" );
+		fid.write( "# make difference\n" );
+		fid.write( ".PHONY: diff\n" );
+		fid.write( "diff: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
+		# make a temporary directory
+		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
+		fid.write( "\t@echo 'created a temp directory in ' $(TMP)\n"); # I have no idea why @echo works. I stole it from http://stackoverflow.com/questions/1909188/define-make-variable-at-rule-execution-time
+		# # make some folders
+		# fid.write( "\tmkdir ${TMP}/new\n" );
+		# fid.write( "\tmkdir ${TMP}/old\n" );
+		fid.write( "\tgit clone . ${TMP}\n" );
+
+		# make the original file
+		fid.write( "\t${LATEXPAND} ${TMP}/${SOURCE}.tex > ${TMP}/orig.tex\n" );
+		fid.write( "\t${LATEXDIFF} ${TMP}/orig.tex ${SOURCE}_one_file.tex > ${SOURCE}_diff.tex\n" );
+
+		# compile the difference file
+		if ( options[ "make_bib_in_default" ] or \
+			options[ "make_index_in_default" ] or \
+			options[ "make_glossary_in_default" ] ):
+			fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
+			if options[ "make_bib_in_default" ]:
+				fid.write( "\t${BIB_ENGINE} ${SOURCE}_diff\n" );
+			if options[ "make_index_in_default" ]:
+				fid.write( "\t${IDX_ENGINE} ${SOURCE}_diff\n" );
+			if options[ "make_glossary_in_default" ]:
+				fid.write( "\t${GLS_ENGINE} ${SOURCE}_diff\n" );
+			fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
+			fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
+			if options[ "use_open" ]:
+				fid.write( "\t${OPEN} ${SOURCE}_diff.pdf\n" );
+
+
+
+		# remove the tempory directory
+		fid.write( "\t${RM} ${RMO} ${TMP}\n" );
+
+	# latex diff
+	fid.write( "\n\n" );
+	fid.write( "# clean difference stuff\n" );
+	fid.write( ".PHONY: cleandiff\n" );
+	fid.write( "cleandiff:\n" );
+	fid.write( "\t${RM} ${RMO} ${SOURCE}_diff.*" );
+
+	if options[ "has_latexpand" ]:
+		# expand source
+		fid.write( "\n\n" );
+		fid.write( "# Expand Source \n" );
+		fid.write( ".PHONY: onefile\n" );
+		fid.write( "onefile: \n" );
+		fid.write( "\t${LATEXPAND} ${SOURCE}.tex > ${SOURCE}_one_file.tex\n" );
+
+		fid.write( "\n\n" );
+		fid.write( "# Expand Source \n" );
+		fid.write( "${SOURCE}_one_file.tex: ${TEX_FILES}\n" );
+		fid.write( "\t${LATEXPAND} ${SOURCE}.tex > ${SOURCE}_one_file.tex\n" );
 
 
 	# tools
