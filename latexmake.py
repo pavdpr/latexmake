@@ -38,6 +38,7 @@
 #	latex2rtf    http://latex2rtf.sourceforge.net
 #	latexdiff    http://latexdiff.berlios.de
 #	latexpand    http://www.ctan.org/pkg/latexpand
+#	bibsort      http://ftp.math.utah.edu/pub/bibsort/
 #
 # LICENSE
 # 	The MIT License (MIT)
@@ -651,47 +652,19 @@ def parseCommaSeparatedData( line ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def removeTeXcomments( texFile, thisFileName ):
-	texFileList = texFile.splitlines();
-	output = "";
-	for line in texFileList:
+def prepareTeXfile( texFile ):
 
-		# remove empty lines as well
-		if len( line ) > 0:
-			loc = line.find( "%" );
-			if loc < 0:
-				output += ( line + "\n" );
-			elif loc > 0:
-				run = True;
-				tmp = "";
-				while run:
-					if len( line ) == 0:
-						run = False;
-					elif loc < 0:
-						tmp += line;
-						run = False;
-					elif loc > 0:
-						if line[loc-1] != "\\":
-							# We have a real comment and not an escaped one
-							tmp += line[:loc];
-							run = False;
-						else:
-							# we have an escaped comment, this is valid
-							tmp += line[:loc+1];
-							line = line[loc+1:];
-							loc = line.find( "%" )
-							# run = True;
-					else:
-						# loc is 0
-						run = False;
-				if len( tmp ) > 0:
-					output += ( tmp + "\n" );	
-			else:
-				# remove lines that are all comment
-				# do nothing here
-				pass;
-	return output
-# fed removeTeXcomments( texFile )
+	# remove newlines (escaped \ to prevent \\% from being excluded )
+	texFile = re.sub( r"\\\\", "", texFile );
+	
+	# merge lines that end in a comment
+	texFile = re.sub( r"(?<!\\)%.*[\n\r]", "", texFile );
+
+	# remove comma ended lines
+	texFile = re.sub( r",\s*[\n\r]", "", texFile );
+	
+	return texFile;
+# fed prepareTeXfile( texFile )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -974,8 +947,8 @@ def parse_latex_file( filename, params ):
 
 	# TODO: look for latexmk directives here
 
-	# remove the comments
-	texFile = removeTeXcomments( texFile, filename );
+	# prepare the TeX file. (remove comments)
+	texFile = prepareTeXfile( texFile );
 
 	# attempt to use existing code to read multiline \usepackages
 	#texFile = " ".join(texFile.split("\n"))
@@ -1018,9 +991,11 @@ def parse_latex_file( filename, params ):
 def latexmake_default_params():
 	params = {};
 
+	# options
 	params[ "makediff" ] = True;
 	params[ "verbose" ] = False;
 
+	# tex command locations
 	params[ "tex" ] = which( "tex" );
 	params[ "latex" ] = which( "latex" );
 	params[ "pdflatex" ] = which( "pdflatex" );
@@ -1036,6 +1011,7 @@ def latexmake_default_params():
 	params[ "epstopdf" ] = which( "epstopdf" );
 	params[ "makeglossaries" ] = which( "makeglossaries" );
 	params[ "makeindex" ] = which( "makeindex" );
+	params[ "bibsort" ] = which( "bibsort" );
 
  	params[ "tex_engine" ] = "PDFLATEX";
 	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
@@ -1158,18 +1134,20 @@ def latexmake_default_params():
 	params[ "latexmk_aux_extensions" ] = [ ".fdb_latexmk", ".fls" ];
 	params[ "glossary_aux_extensions" ] = [ ".acn", ".acr", ".alg", ".glg", \
 		".glo", ".gls", ".ist", ".lem", ".glsdefs" ];
+	params[ "mw_aux_extensions" ] = [ ".mw" ];
 	params[ "pkg_aux_extensions" ] = [];
 
 	params[ "clean_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
 	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
 	params[ "latexmk_aux_extensions" ] + params[ "idx_aux_extensions" ] + \
-	params[ "glossary_aux_extensions" ] + params[ "pkg_aux_extensions" ];
+	params[ "glossary_aux_extensions" ] + params[ "pkg_aux_extensions" ] + \
+	params[ "mw_aux_extensions" ];
 
 	params[ "all_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
 	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
 	params[ "figure_aux_extensions" ] + params[ "latexmk_aux_extensions" ] + \
 	params[ "idx_aux_extensions" ] + params[ "pkg_aux_extensions" ] + \
-	params[ "glossary_aux_extensions" ];
+	params[ "glossary_aux_extensions" ] + params[ "mw_aux_extensions" ];
 	return params;
 # fed latexmake_default_params()
 #-------------------------------------------------------------------------------
@@ -1262,6 +1240,7 @@ def write_makefile( fid, options ):
 	fid.write( "LATEXDIFF=" + options[ "latexdiff" ] + "\n" );
 	fid.write( "LATEXPAND=" + options[ "latexpand" ] + "\n" );
 	fid.write( "LATEX2RTF=" + options[ "latex2rtf" ] + "\n" );
+	fid.write( "BIBSORT=" + options[ "bibsort" ] + "\n" );
 	fid.write( "# end TeX commands\n" );
 	fid.write( "\n\n" );
 
@@ -1392,6 +1371,13 @@ def write_makefile( fid, options ):
 
 	tmp = "PKG_AUX_EXT=";
 	for ext in options[ "pkg_aux_extensions" ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp, 80, 8, 0, False );
+	fid.write( "\n" );
+
+	tmp = "MW_AUX_EXT=";
+	for ext in options[ "mw_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
@@ -1635,6 +1621,12 @@ def write_makefile( fid, options ):
 		for ext in options[ 'glossary_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );	
+		fid.write( "\t${ECHO} '# morewrites auxiliary files' >> .gitignore\n" );
+		for ext in options[ 'mw_aux_extensions' ]:
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# converted figures' >> .gitignore\n" );
 		for ext in options[ 'figure_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
@@ -1642,12 +1634,17 @@ def write_makefile( fid, options ):
 				fid.write( "\t${ECHO} '" + os.path.join( pth, \
 					"*-converted-to.pdf" ) + "' >> .gitignore\n" );
 
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# index auxiliary files' >> .gitignore\n" );
 		for ext in options[ "idx_aux_extensions" ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# mac things' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '.DS_STORE' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# vi/vim swap file' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '*.swp' >> .gitignore\n" );
 
 	if options[ "makediff" ]:
 		# right now will use the master branch of .
