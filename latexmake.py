@@ -837,7 +837,7 @@ def findFigures( texFile, params, thisFileName ):
 
 #-------------------------------------------------------------------------------
 def findSubTeXfiles( texFile, params, thisFileName ):
-	key = r"\\(include|input)(\[.*\])?(\{[\w\/]*\})";
+	key = r"\\(include|input)(\[.*\])?(\{[\w\/ ]*\})";
 	locs = re.findall( key, texFile );
 	files = [];
 	for tmp in locs:
