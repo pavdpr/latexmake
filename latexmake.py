@@ -791,7 +791,7 @@ def findGraphicsExtensions( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 def findFigures( texFile, params, thisFileName ):
 	# TODO: also get pgf figures
-	m = re.findall( r"\\includegraphics(\[.*\])?\s*(\{\w*\})", texFile );
+	m = re.findall( r"\\includegraphics(\[.*\])?\s*(\{[\w\/ ]\})", texFile );
 	if not m:
 		return params;
 
