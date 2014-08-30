@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # ABOUT:
-#	A python script I have been working on to make the Makefile for a generic  
+#	A python script I have been working on to make the Makefile for a generic
 #	TeX document. It is probably similar to latexmk [1], but there is something
 #	to be said for writing some things yourself!
 #
@@ -9,7 +9,7 @@
 #	https://github.com/pavdpr/latexmake
 #
 # SUGGESTED USE:
-#	- Put the git repository on your machine (the location is /path/to/repo)	
+#	- Put the git repository on your machine (the location is /path/to/repo)
 #	- In your path (type "echo $PATH" w/o quotes in terminal to see the locatons
 #	of path. A further suggestion: add a folder to PATH that does not require root
 #	access, e.g, ~/bin), make a link to this file:
@@ -32,7 +32,7 @@
 #
 # REQUIRED TOOLS:
 #	make         http://www.gnu.org/software/make/
-#   
+#
 # OPTIONAL TOOLS:
 #	git          http://git-scm.com
 #	latex2rtf    http://latex2rtf.sourceforge.net
@@ -46,27 +46,27 @@
 #	Copyright 2014 Paul Romanczyk
 #
 # 	Permission is hereby granted, free of charge, to any person obtaining a copy
-# 	of this software and associated documentation files (the "Software"), to 
-#	deal in the Software without restriction, including without limitation the 
-#	rights to use, copy, modify, merge, publish, distribute, sublicense, and/or 
-#	sell copies of the Software, and to permit persons to whom the Software is 
+# 	of this software and associated documentation files (the "Software"), to
+#	deal in the Software without restriction, including without limitation the
+#	rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+#	sell copies of the Software, and to permit persons to whom the Software is
 #	furnished to do so, subject to the following conditions:
 #
-#	The above copyright notice and this permission notice shall be included in 
+#	The above copyright notice and this permission notice shall be included in
 #	all copies or substantial portions of the Software.
 #
 #	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-#	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-#	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-#	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-#	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+#	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 #	IN THE SOFTWARE.
 #
 # REFERENCES:
 #	[1] http://users.phys.psu.edu/~collins/software/latexmk-jcc/ [2014-01-08]
 #	[*] http://tex.stackexchange.com/questions/7770/file-extensions-of-latex-related-files
-#	
+#
 #
 
 
@@ -191,7 +191,7 @@ def which( program ):
 
 	# program does not exist, return None
 	return None;
-# fed which( program ) 
+# fed which( program )
 #-------------------------------------------------------------------------------
 
 
@@ -372,7 +372,7 @@ def findUnescaped( line, char ):
 #-------------------------------------------------------------------------------
 def purifyListOfStrings( l, key ):
 	return [ item for item in l if not re.search( key, item ) ];
-# fed def purifyListOfStrings( l, key )	
+# fed def purifyListOfStrings( l, key )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -656,13 +656,13 @@ def prepareTeXfile( texFile ):
 
 	# remove newlines (escaped \ to prevent \\% from being excluded )
 	texFile = re.sub( r"\\\\", "", texFile );
-	
+
 	# merge lines that end in a comment
 	texFile = re.sub( r"(?<!\\)%.*[\n\r]", "", texFile );
 
 	# remove comma ended lines
 	texFile = re.sub( r",\s*[\n\r]", "", texFile );
-	
+
 	return texFile;
 # fed prepareTeXfile( texFile )
 #-------------------------------------------------------------------------------
@@ -683,11 +683,11 @@ def findPackages( texFile, params, thisFileName ):
 	# isbn=false,					% include isbn where present
 	# useprefix=true,				%
 	# natbib=true,					%
-	# backend=biber]				% use biber on the backend 
+	# backend=biber]				% use biber on the backend
 	# {biblatex}
 	#
 	# I probably need to abandon regular expressions
-	# 
+	#
 	# TODO: also have this work with \requirepackage
 
 	key = r"\\usepackage(\[.*\])?(\{.*\})";
@@ -730,7 +730,7 @@ def findPackages( texFile, params, thisFileName ):
 				# elif package == "glossaries":
 				# 	params[ "make_glossary_in_default" ] = True;
 
-	# update the packages list in params				
+	# update the packages list in params
 	params[ "packages" ] += packages;
 	return params;
 # fed findPackages( texFile, params )
@@ -802,7 +802,7 @@ def findFigures( texFile, params, thisFileName ):
 				for pth in params[ "graphics_paths" ] \
 				for ext in params[ "fig_extensions" ] \
 				if os.path.isfile( os.path.join( pth, fig + ext ) )];
-		
+
 		if posibleFigures:
 			params[ "fig_files" ].append( posibleFigures[ 0 ] );
 		elif params[ "verbose" ]:
@@ -831,10 +831,10 @@ def findSubTeXfiles( texFile, params, thisFileName ):
 				f = None;
 				if os.path.isfile( subfile ):
 					f = os.path.abspath( subfile );
-					
+
 				elif os.path.isfile( subfile + ".tex" ):
 					f = os.path.abspath( subfile + ".tex" );
-					
+
 				elif params[ "verbose" ]:
 					#TODO?: raise exception
 					warning( "In \"" + thisFileName + \
@@ -850,9 +850,9 @@ def findSubTeXfiles( texFile, params, thisFileName ):
 					# parse the sub tex file
 					params = parse_latex_file( f, params );
 
-					
 
-		
+
+
 	return params;
 # fed findSubTeXfiles( texFile, params )
 #-------------------------------------------------------------------------------
@@ -882,7 +882,7 @@ def findBibliographies( texFile, params, thisFileName ):
 
 	if ( locs ):
 		params[ "make_bib_in_default" ] = True;
-	
+
 	return params;
 # fed findBibliographies( texFile, params, thisFileName )
 #-------------------------------------------------------------------------------
@@ -927,7 +927,7 @@ def findLocalStyFiles( styname, params, thisFileName ):
 
 		if f:
 			params[ "sty_files" ].append( f );
-			
+
 			#parse the included local style file
 			params = parse_latex_file( f, params )
 
@@ -961,7 +961,7 @@ def parse_latex_file( filename, params ):
 
 	# search for Graphics Extensions
 	params = findGraphicsExtensions( texFile, params, filename );
-	
+
 	# find graphics paths
 	params = findGraphicsPaths( texFile, params, filename );
 
@@ -1064,7 +1064,7 @@ def latexmake_default_params():
 		print "    diff";
 		print "    onefile";
 
-		
+
 
 	if not functionExists( "make" ):
 		raise latexmake_makeDoesNotExist( "make is not in your path" );
@@ -1120,7 +1120,7 @@ def latexmake_default_params():
 	params[ "packages" ] = [];
 	params[ "use_absolute_file_paths" ] = False;
 	params[ "use_absolute_executable_paths" ] = True;
-	
+
 
 	# set extensions
 	params[ "fig_extensions" ] = [ ".pdf", ".png", ".jpg", ".jpeg" ];
@@ -1218,7 +1218,7 @@ def write_makefile( fid, options ):
 
 	# write some documentation about how created
 	fid.write( latexmake_header() );
-	fid.write( "\n\n" ); 
+	fid.write( "\n\n" );
 
 	# TeX commands
 	fid.write( "# TeX commands (MODIFY AT YOUR OWN RISK)\n" );
@@ -1389,7 +1389,7 @@ def write_makefile( fid, options ):
 	tmp += "\n";
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n\n" );
-	
+
 	fid.write( "########################################" + \
 		"########################################\n" );
 	fid.write( "########################################" + \
@@ -1569,14 +1569,14 @@ def write_makefile( fid, options ):
 		fid.write( "gitbkup: .git .gitignore\n" );
 		fid.write( "\t${GIT} add -A\n" );
 		fid.write( "\t${GIT} commit -m 'bkup'\n" );
-		
+
 
 		# git init ( so make gitbkup does not throw error if not a repository )
 		fid.write( "\n\n" );
 		fid.write( "# git init\n" );
 		fid.write( ".git:\n" );
 		fid.write( "\t${GIT} init\n" );
-		
+
 
 		# .gitignore
 		fid.write( "\n\n" );
@@ -1590,7 +1590,7 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '# output files' >> .gitignore\n" );
 		for ext in [ 'pdf', 'eps', 'ps', 'dvi' ]:
 			fid.write( "\t${ECHO} ${SOURCE}." + ext + " >> .gitignore\n" );
-			
+
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# TeX auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'tex_aux_extensions' ]:
@@ -1611,17 +1611,17 @@ def write_makefile( fid, options ):
 		for ext in options[ 'latexmk_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
-		fid.write( "\t${ECHO} '' >> .gitignore\n" );	
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# package auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'pkg_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
-		fid.write( "\t${ECHO} '' >> .gitignore\n" );	
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# glossary auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'glossary_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
-		fid.write( "\t${ECHO} '' >> .gitignore\n" );	
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# morewrites auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'mw_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
@@ -1733,14 +1733,14 @@ def latexmake_parse_inputs():
 		if not os.path.isfile( tmp ):
 			# we may have left the extension off
 			tmp += ".tex";
-			if not os.path.isfile( tmp ): 
+			if not os.path.isfile( tmp ):
 				raise latexmake_nonexistantFile( tmp );
 
 
 		# get the absolute path to the source file
 		( pth, tmp ) = os.path.split( os.path.abspath( tmp ) );
 		output[ "path" ] = pth;
-		
+
 		idx = tmp.find( ".tex" );
 
 		output[ "tex_files" ].append( os.path.abspath( tmp ) );
@@ -1780,14 +1780,14 @@ def main():
 
 	# parse the parameters
 	params = latexmake_parse_inputs();
-	
+
 	params = parse_latex_file( params[ "basename" ] + ".tex", params );
 
 	# open the Makefile
 	fid = open( "Makefile", "w" );
 
 	# write the Makefile
-	write_makefile( fid, params );		
+	write_makefile( fid, params );
 
 	# close the makefile
 	fid.close();
@@ -1799,5 +1799,5 @@ def main():
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":
 	main();
-# __name__ == "__main__"	
+# __name__ == "__main__"
 #-------------------------------------------------------------------------------
