@@ -1,0 +1,5 @@
+# set line endings to LF in repo
+*	text=auto
+
+# use python syntax for finding differences
+*.py	diff=python
