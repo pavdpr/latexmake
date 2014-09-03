@@ -71,7 +71,7 @@ import platform;    # for determining if a mac to use open
 # set the version number
 latexmake_version_major = 0;
 latexmake_version_minor = 0;
-latexmake_version_revision = 2;
+latexmake_version_revision = 3;
 
 
 #================================================================================
@@ -1507,7 +1507,7 @@ def write_makefile( fid, options ):
 		fid.write( "\n\n" );
 		fid.write( "# git backup\n" );
 		fid.write( ".PHONY: gitbkup\n" );
-		fid.write( "gitbkup: .git .gitignore\n" );
+		fid.write( "gitbkup: .git .gitignore .gitattributes\n" );
 		fid.write( "\t${GIT} add -A\n" );
 		fid.write( "\t${GIT} commit -m 'bkup'\n" );
 
@@ -1515,7 +1515,7 @@ def write_makefile( fid, options ):
 		# git init ( so make gitbkup does not throw error if not a repository )
 		fid.write( "\n\n" );
 		fid.write( "# git init\n" );
-		fid.write( ".git:\n" );
+		fid.write( ".git: .gitignore .gitattributes\n" );
 		fid.write( "\t${GIT} init\n" );
 
 
@@ -1575,6 +1575,42 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# mac things' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '.DS_STORE' >> .gitignore\n" );
+
+
+		# .gitattributes
+		# see https://github.com/Danimoth/gitattributes
+		fid.write( "\n\n" );
+		fid.write( "# .gitattributes\n" );
+		fid.write( ".gitattributes:\n" );
+		fid.write( "\t${ECHO} '# .gitattributes' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		header = latexmake_header().split( "\n" );
+		for line in header:
+			fid.write( "\t${ECHO} '" + line + "' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '# Auto detect text files and perform LF normalization' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '* text=auto' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '#' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '# The above will handle all files NOT found below' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '#' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.tex\tdiff=tex' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.sty\tdiff=tex' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.cls\tdiff=tex' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.pdf\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.PDF\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.eps\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.EPS\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.png\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.PNG\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.jpg\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.JPG\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.jpeg\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.JPEG\tbinary' >> .gitattributes\n" );
+
+
 
 
 	# tools
