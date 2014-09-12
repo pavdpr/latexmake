@@ -866,7 +866,7 @@ def findSubTeXfiles( texFile, params, thisFileName ):
 						params[ "sub_paths" ].append( tmp );
 
 					# parse the sub tex file
-					params = parse_latex_file( f, params );
+					params = parseLatexFile( f, params );
 
 
 
@@ -947,7 +947,7 @@ def findLocalStyFiles( styname, params, thisFileName ):
 			params[ "sty_files" ].append( f );
 
 			#parse the included local style file
-			params = parse_latex_file( f, params )
+			params = parseLatexFile( f, params )
 
 	return params;
 # fed findLocalStyFiles( styfilename, params, thisFileName )
@@ -955,7 +955,7 @@ def findLocalStyFiles( styname, params, thisFileName ):
 
 
 #-------------------------------------------------------------------------------
-def parse_latex_file( filename, params ):
+def parseLatexFile( filename, params ):
 	fid = open( filename, "r" );
 	if fid < 0:
 		raise latexmake_nonexistantFile( filename );
@@ -994,7 +994,7 @@ def parse_latex_file( filename, params ):
 
 	return params;
 
-# fed parse_latex_file( file )
+# fed parseLatexFile( file )
 #-------------------------------------------------------------------------------
 
 
@@ -1687,7 +1687,7 @@ def main():
 	# parse the parameters
 	params = latexmake_parse_inputs();
 
-	params = parse_latex_file( params[ "basename" ] + ".tex", params );
+	params = parseLatexFile( params[ "basename" ] + ".tex", params );
 
 	# open the Makefile
 	fid = open( "Makefile", "w" );
