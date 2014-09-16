@@ -1093,7 +1093,7 @@ def latexmake_default_params():
 	params[ "latexmk_aux_extensions" ] = [ ".fdb_latexmk", ".fls" ];
 	params[ "glossary_aux_extensions" ] = [ ".acn", ".acr", ".alg", ".glg", \
 		".glo", ".gls", ".ist", ".lem", ".glsdefs" ];
-	params[ "pkg_aux_extensions" ] = [];
+	params[ "pkg_aux_extensions" ] = [ ".mw" ];
 
 	params[ "clean_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
 	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
