@@ -938,10 +938,10 @@ def findLocalStyFiles( styname, params, thisFileName ):
 		f = None;
 		# this is bad logic. files may be in the directory tree.
 
-		#if styname in files:
-		#	f = os.path.abspath( styname );
-		#elif ( styname + ".sty" ) in files:
-		#	f = os.path.abspath( styname + ".sty" );
+		if styname in files:
+			f = os.path.abspath( styname );
+		elif ( styname + ".sty" ) in files:
+			f = os.path.abspath( styname + ".sty" );
 
 		if f:
 			params[ "sty_files" ].append( f );
@@ -1008,22 +1008,24 @@ def parseLatexFile( filename, params ):
 #-------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
-	params[ "tex" ] = which( "tex" );
-	params[ "latex" ] = which( "latex" );
-	params[ "pdflatex" ] = which( "pdflatex" );
-	params[ "luatex" ] = which( "luatex" );
-	params[ "lualatex" ] = which( "lualatex" );
-	params[ "xelatex" ] = which( "xelatex" );
-	params[ "xetex" ] = which( "xelatex" );
-	params[ "bibtex" ] = which( "bibtex" );
-	params[ "biber" ] = which( "biber" );
-	params[ "dvips" ] = which( "dvips" );
-	params[ "ps2eps" ] = which( "ps2eps" );
-	params[ "pstopdf" ] = which( "pstopdf" );
-	params[ "epstopdf" ] = which( "epstopdf" );
-	params[ "makeglossaries" ] = which( "makeglossaries" );
-	params[ "makeindex" ] = which( "makeindex" );
-
+	params[ "tex" ] = "tex";
+	params[ "latex" ] = "latex";
+	params[ "pdflatex" ] = "pdflatex";
+	params[ "luatex" ] = "luatex";
+	params[ "lualatex" ] = "lualatex";
+	params[ "xelatex" ] = "xelatex";
+	params[ "xetex" ] = "xelatex";
+	params[ "bibtex" ] = "bibtex";
+	params[ "biber" ] = "biber";
+	params[ "dvips" ] = "dvips";
+	params[ "ps2eps" ] = "ps2eps";
+	params[ "pstopdf" ] = "pstopdf";
+	params[ "epstopdf" ] = "epstopdf";
+	params[ "makeglossaries" ] = "makeglossaries";
+	params[ "makeindex" ] = "makeindex";
+	params[ "tex_commands" ] = [ "tex", "latex", "pdflatex", "luatex", \
+		"lualatex", "xelatex", "xelatex", "bibtex", "biber", "dvips", \
+		"ps2eps", "pstopdf", "epstopdf", "makeglossaries", "makeindex" ];
 
  	params[ "tex_engine" ] = "PDFLATEX";
 	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
@@ -1066,13 +1068,15 @@ def latexmake_default_params():
 		params[ "latex2rtf" ] = "";
 	params[ "latex2rtf_options" ] = "-M32";
 
-	params[ "rm" ] = which( "rm" );
+	params[ "rm" ] = "rm";
 	params[ "rm_options" ] = "-rf";
-	params[ "echo" ] = which( "echo" );
-	params[ "find" ] = which( "find" );
+	params[ "echo" ] = "echo";
+	params[ "find" ] = "find";
+	params[ "unix_commands" ] = [ "rm", "echo", "find" ];
 	if ( platform.system() == "Darwin" ):
 		params[ "use_open" ] = True;
-		params[ "open" ] = which( "open" );
+		params[ "open" ] = "open";
+		params[ "unix_commands" ].append( "open" );
 	else:
 		params[ "use_open" ] = False;
 
@@ -1151,14 +1155,20 @@ def latexmake_finalize_params( params ):
 	# set exicutible paths to absolute or relative
 	if params[ "use_absolute_executable_paths" ]:
 		# use absolute paths
-		params[ "rm" ] = os.path.abspath( params[ "rm" ] );
-		params[ "make" ] = os.path.abspath( params[ "make" ] );
-		params[ "echo" ] = os.path.abspath( params[ "echo" ] );
-		params[ "find" ] = os.path.abspath( params[ "find" ] );
-		pass;
+		for command in params[ "unix_commands" ]:
+			tmp = which( command );
+			if tmp:
+				params[ command ] = os.path.abspath( tmp );
+			else:
+				print "Warning!";
+				print command + " is not found in your PATH";
 	else:
 		# use relative paths
-		pass;
+		for command in params[ "unix_commands" ]:
+			tmp = which( command );
+			if not tmp:
+				print "Warning!";
+				print command + " is not found in your PATH";
 
 	# TODO: remove duplicate aux_extensions
 
