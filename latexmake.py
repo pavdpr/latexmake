@@ -1025,7 +1025,8 @@ def latexmake_default_params():
 	params[ "makeindex" ] = "makeindex";
 	params[ "tex_commands" ] = [ "tex", "latex", "pdflatex", "luatex", \
 		"lualatex", "xelatex", "xelatex", "bibtex", "biber", "dvips", \
-		"ps2eps", "pstopdf", "epstopdf", "makeglossaries", "makeindex" ];
+		"ps2eps", "pstopdf", "epstopdf", "makeglossaries", "makeindex", \
+		"tex2rtf", "latex2rtf" ];
 
  	params[ "tex_engine" ] = "PDFLATEX";
 	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
@@ -1061,9 +1062,9 @@ def latexmake_default_params():
 	else:
 		params[ "make" ] = which( "make" );
 
- 	params[ "has_latex2rft" ] = functionExists( "latex2rtf" );
- 	if params[ "has_latex2rft" ]:
-		params[ "latex2rtf" ] = which( "latex2rtf" );
+ 	params[ "has_latex2rtf" ] = functionExists( "latex2rtf" );
+ 	if params[ "has_latex2rtf" ]:
+		params[ "latex2rtf" ] = "latex2rtf";
 	else:
 		params[ "latex2rtf" ] = "";
 	params[ "latex2rtf_options" ] = "-M32";
@@ -1204,17 +1205,24 @@ def write_makefile( fid, options ):
 	fid.write( "EPSTOPDF=" + options[ "epstopdf" ] + "\n" );
 	fid.write( "MAKEGLOSSARIES=" + options[ "makeglossaries" ] + "\n" );
 	fid.write( "MAKEINDEX=" + options[ "makeindex" ] + "\n" );
+	fid.write( "LATEX2RTF=" + options[ "latex2rtf" ] + "\n" );
 	fid.write( "# end TeX commands\n" );
 	fid.write( "\n\n" );
 
 	# write the tex engines
 	fid.write( "# TeX commands\n" );
 	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + "}\n" );
-	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
 	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + "}\n" );
 	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + "}\n" );
 	fid.write( "GLS_ENGINE=${" + options[ "gls_engine" ] + "}\n" );
 	fid.write( "\n" );
+
+	# write the tex options
+	fid.write( "# TeX commands\n" );
+	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
+	fid.write( "LATEX2RTF_OPTIONS=" + options[ "latex2rtf_options" ] + "\n" );
+	fid.write( "\n" );
+
 	# write the other enigines of other uitilies
 	fid.write( "# commands\n" )
 	fid.write( "MAKE=" + options[ "make" ] + "\n" );
@@ -1505,7 +1513,7 @@ def write_makefile( fid, options ):
 	fid.write( "\n\n" );
 
 
-	if options[ "has_latex2rft" ]:
+	if options[ "has_latex2rtf" ]:
 		fid.write( "\n\n" );
 		fid.write( "# make rtf file\n" );
 		fid.write( "${SOURCE}.rtf: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
