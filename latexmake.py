@@ -81,7 +81,7 @@ import platform;    # for determining if a mac to use open
 # set the version number
 latexmake_version_major = 0;
 latexmake_version_minor = 0;
-latexmake_version_revision = 2;
+latexmake_version_revision = 3;
 
 
 #================================================================================
@@ -721,7 +721,7 @@ def findSubTeXfiles( texFile, params, thisFileName ):
 						params[ "sub_paths" ].append( tmp );
 
 					# parse the sub tex file
-					params = parse_latex_file( f, params );
+					params = parseLatexFile( f, params );
 
 
 
@@ -793,16 +793,16 @@ def findLocalStyFiles( styname, params, thisFileName ):
 		f = None;
 		# this is bad logic. files may be in the directory tree.
 
-		#if styname in files:
-		#	f = os.path.abspath( styname );
-		#elif ( styname + ".sty" ) in files:
-		#	f = os.path.abspath( styname + ".sty" );
+		if styname in files:
+			f = os.path.abspath( styname );
+		elif ( styname + ".sty" ) in files:
+			f = os.path.abspath( styname + ".sty" );
 
 		if f:
 			params[ "sty_files" ].append( f );
 
 			#parse the included local style file
-			params = parse_latex_file( f, params )
+			params = parseLatexFile( f, params )
 
 	return params;
 # fed findLocalStyFiles( styfilename, params, thisFileName )
@@ -810,7 +810,7 @@ def findLocalStyFiles( styname, params, thisFileName ):
 
 
 #-------------------------------------------------------------------------------
-def parse_latex_file( filename, params ):
+def parseLatexFile( filename, params ):
 	fid = open( filename, "r" );
 	if fid < 0:
 		raise latexmake_nonexistantFile( filename );
@@ -849,8 +849,8 @@ def parse_latex_file( filename, params ):
 
 	return params;
 
-# fed parse_latex_file( file )
-#--------------------------------------------------------------------------------
+# fed parseLatexFile( file )
+#-------------------------------------------------------------------------------
 
 
 #================================================================================
@@ -863,28 +863,30 @@ def parse_latex_file( filename, params ):
 #-------------------------------------------------------------------------------
 def latexmake_default_params():
 	params = {};
-
 	# options
 	params[ "makediff" ] = True;
 	params[ "verbose" ] = False;
 
 	# tex command locations
-	params[ "tex" ] = which( "tex" );
-	params[ "latex" ] = which( "latex" );
-	params[ "pdflatex" ] = which( "pdflatex" );
-	params[ "luatex" ] = which( "luatex" );
-	params[ "lualatex" ] = which( "lualatex" );
-	params[ "xelatex" ] = which( "xelatex" );
-	params[ "xetex" ] = which( "xelatex" );
-	params[ "bibtex" ] = which( "bibtex" );
-	params[ "biber" ] = which( "biber" );
-	params[ "dvips" ] = which( "dvips" );
-	params[ "ps2eps" ] = which( "ps2eps" );
-	params[ "pstopdf" ] = which( "pstopdf" );
-	params[ "epstopdf" ] = which( "epstopdf" );
-	params[ "makeglossaries" ] = which( "makeglossaries" );
-	params[ "makeindex" ] = which( "makeindex" );
-	params[ "bibsort" ] = which( "bibsort" );
+	params[ "tex" ] = "tex";
+	params[ "latex" ] = "latex";
+	params[ "pdflatex" ] = "pdflatex";
+	params[ "luatex" ] = "luatex";
+	params[ "lualatex" ] = "lualatex";
+	params[ "xelatex" ] = "xelatex";
+	params[ "xetex" ] = "xelatex";
+	params[ "bibtex" ] = "bibtex";
+	params[ "biber" ] = "biber";
+	params[ "dvips" ] = "dvips";
+	params[ "ps2eps" ] = "ps2eps";
+	params[ "pstopdf" ] = "pstopdf";
+	params[ "epstopdf" ] = "epstopdf";
+	params[ "makeglossaries" ] = "makeglossaries";
+	params[ "makeindex" ] = "makeindex";
+	params[ "tex_commands" ] = [ "tex", "latex", "pdflatex", "luatex", \
+		"lualatex", "xelatex", "xelatex", "bibtex", "biber", "dvips", \
+		"ps2eps", "pstopdf", "epstopdf", "makeglossaries", "makeindex", \
+		"tex2rtf", "latex2rtf" ];
 
  	params[ "tex_engine" ] = "PDFLATEX";
 	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
@@ -924,6 +926,7 @@ def latexmake_default_params():
 		print "    .git";
 		print "    .gitignore";
 		print "    diff";
+
 	params[ "has_latexpand" ] = functionExists( "latexpand" );
 	if params[ "has_latexpand" ]:
 		params[ "latexpand" ] = which( "latexpand" );
@@ -937,6 +940,11 @@ def latexmake_default_params():
 		print "    diff";
 		print "    onefile";
 
+	params[ "has_bibsort" ] = functionExists( "bibsort" );
+	if params[ "has_latexpand" ]:
+		params[ "bibsort" ] = "bibsort";
+	else:
+		params[ "bibsort" ] = "";
 
 
 	if not functionExists( "make" ):
@@ -968,8 +976,8 @@ def latexmake_default_params():
 		print "    diff";
 
 
- 	params[ "has_latex2rft" ] = functionExists( "latex2rtf" );
- 	if params[ "has_latex2rft" ]:
+ 	params[ "has_latex2rtf" ] = functionExists( "latex2rtf" );
+ 	if params[ "has_latex2rtf" ]:
 		params[ "latex2rtf" ] = which( "latex2rtf" );
 	else:
 		params[ "latex2rtf" ] = "";
@@ -980,19 +988,22 @@ def latexmake_default_params():
 		print "    rtf";
 	params[ "latex2rtf_options" ] = "-M32";
 
-	params[ "rm" ] = which( "rm" );
+	params[ "rm" ] = "rm";
 	params[ "rm_options" ] = "-rf";
-	params[ "echo" ] = which( "echo" );
-	params[ "find" ] = which( "find" );
+	params[ "echo" ] = "echo";
+	params[ "find" ] = "find";
+	params[ "unix_commands" ] = [ "rm", "echo", "find" ];
 	if ( platform.system() == "Darwin" ):
 		params[ "use_open" ] = True;
-		params[ "open" ] = which( "open" );
+		params[ "open" ] = "open";
+		params[ "unix_commands" ].append( "open" );
 	else:
 		params[ "use_open" ] = False;
 
 	params[ "packages" ] = [];
 	params[ "use_absolute_file_paths" ] = False;
 	params[ "use_absolute_executable_paths" ] = True;
+	params[ "verbose" ] = False;
 
 
 	# set extensions
@@ -1007,20 +1018,18 @@ def latexmake_default_params():
 	params[ "latexmk_aux_extensions" ] = [ ".fdb_latexmk", ".fls" ];
 	params[ "glossary_aux_extensions" ] = [ ".acn", ".acr", ".alg", ".glg", \
 		".glo", ".gls", ".ist", ".lem", ".glsdefs" ];
-	params[ "mw_aux_extensions" ] = [ ".mw" ];
-	params[ "pkg_aux_extensions" ] = [];
+	params[ "pkg_aux_extensions" ] = [ ".mw" ];
 
 	params[ "clean_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
 	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
 	params[ "latexmk_aux_extensions" ] + params[ "idx_aux_extensions" ] + \
-	params[ "glossary_aux_extensions" ] + params[ "pkg_aux_extensions" ] + \
-	params[ "mw_aux_extensions" ];
+	params[ "glossary_aux_extensions" ] + params[ "pkg_aux_extensions" ];
 
 	params[ "all_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
 	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
 	params[ "figure_aux_extensions" ] + params[ "latexmk_aux_extensions" ] + \
 	params[ "idx_aux_extensions" ] + params[ "pkg_aux_extensions" ] + \
-	params[ "glossary_aux_extensions" ] + params[ "mw_aux_extensions" ];
+	params[ "glossary_aux_extensions" ];
 	return params;
 # fed latexmake_default_params()
 #-------------------------------------------------------------------------------
@@ -1067,14 +1076,20 @@ def latexmake_finalize_params( params ):
 	# set exicutible paths to absolute or relative
 	if params[ "use_absolute_executable_paths" ]:
 		# use absolute paths
-		params[ "rm" ] = os.path.abspath( params[ "rm" ] );
-		params[ "make" ] = os.path.abspath( params[ "make" ] );
-		params[ "echo" ] = os.path.abspath( params[ "echo" ] );
-		params[ "find" ] = os.path.abspath( params[ "find" ] );
-		pass;
+		for command in params[ "unix_commands" ]:
+			tmp = which( command );
+			if tmp:
+				params[ command ] = os.path.abspath( tmp );
+			else:
+				print "Warning!";
+				print command + " is not found in your PATH";
 	else:
 		# use relative paths
-		pass;
+		for command in params[ "unix_commands" ]:
+			tmp = which( command );
+			if not tmp:
+				print "Warning!";
+				print command + " is not found in your PATH";
 
 	# TODO: remove duplicate aux_extensions
 
@@ -1120,11 +1135,17 @@ def write_makefile( fid, options ):
 	# write the tex engines
 	fid.write( "# TeX commands and options\n" );
 	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + "}\n" );
-	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
 	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + "}\n" );
 	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + "}\n" );
 	fid.write( "GLS_ENGINE=${" + options[ "gls_engine" ] + "}\n" );
 	fid.write( "\n" );
+
+	# write the tex options
+	fid.write( "# TeX commands\n" );
+	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
+	fid.write( "LATEX2RTF_OPTIONS=" + options[ "latex2rtf_options" ] + "\n" );
+	fid.write( "\n" );
+
 	# write the other enigines of other uitilies
 	fid.write( "# commands\n" )
 	fid.write( "MAKE=" + options[ "make" ] + "\n" );
@@ -1249,13 +1270,6 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
-	tmp = "MW_AUX_EXT=";
-	for ext in options[ "mw_aux_extensions" ]:
-		tmp += ( " *" + ext );
-	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
-	fid.write( "\n" );
-
 	tmp = "ALL_AUX_EXT=";
 	for ext in options[ "all_aux_extensions" ]:
 		tmp += ( " *" + ext );
@@ -1263,20 +1277,13 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n\n" );
 
-	fid.write( "########################################" + \
-		"########################################\n" );
-	fid.write( "########################################" + \
-		"########################################\n" );
-	fid.write( "##                                      " + \
-		"                                      ##\n" );
-	fid.write( "##         No changes should have to be " + \
-		"made after here                       ##\n" );
-	fid.write( "##                                      " + \
-		"                                      ##\n" );
-	fid.write( "########################################" + \
-		"########################################\n" );
-	fid.write( "########################################" + \
-		"########################################\n" );
+	fid.write( "#" * 80 + "\n" );
+	fid.write( "#" * 80 + "\n" );
+	fid.write( "##\n" );
+	fid.write( "##\tNo changes should have to be made after here\n" );
+	fid.write( "##\n" );
+	fid.write( "#" * 80 + "\n" );
+	fid.write( "#" * 80 + "\n" );
 
 
 	fid.write( "\n" );
@@ -1427,7 +1434,7 @@ def write_makefile( fid, options ):
 	fid.write( "\n\n" );
 
 
-	if options[ "has_latex2rft" ]:
+	if options[ "has_latex2rtf" ]:
 		fid.write( "\n\n" );
 		fid.write( "# make rtf file\n" );
 		fid.write( "${SOURCE}.rtf: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
@@ -1439,7 +1446,7 @@ def write_makefile( fid, options ):
 		fid.write( "\n\n" );
 		fid.write( "# git backup\n" );
 		fid.write( ".PHONY: gitbkup\n" );
-		fid.write( "gitbkup: .git .gitignore\n" );
+		fid.write( "gitbkup: .git .gitignore .gitattributes\n" );
 		fid.write( "\t${GIT} add -A\n" );
 		fid.write( "\t${GIT} commit -m 'bkup'\n" );
 
@@ -1447,7 +1454,7 @@ def write_makefile( fid, options ):
 		# git init ( so make gitbkup does not throw error if not a repository )
 		fid.write( "\n\n" );
 		fid.write( "# git init\n" );
-		fid.write( ".git:\n" );
+		fid.write( ".git: .gitignore .gitattributes\n" );
 		fid.write( "\t${GIT} init\n" );
 
 
@@ -1495,8 +1502,8 @@ def write_makefile( fid, options ):
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
-		fid.write( "\t${ECHO} '# morewrites auxiliary files' >> .gitignore\n" );
-		for ext in options[ 'mw_aux_extensions' ]:
+		fid.write( "\t${ECHO} '# package auxiliary files' >> .gitignore\n" );
+		for ext in options[ 'pkg_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
@@ -1518,6 +1525,42 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# vi/vim swap file' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '*.swp' >> .gitignore\n" );
+
+		# .gitattributes
+		# see https://github.com/Danimoth/gitattributes
+		fid.write( "\n\n" );
+		fid.write( "# .gitattributes\n" );
+		fid.write( ".gitattributes:\n" );
+		fid.write( "\t${ECHO} '# .gitattributes' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		header = latexmake_header().split( "\n" );
+		for line in header:
+			fid.write( "\t${ECHO} '" + line + "' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '# Auto detect text files and perform LF normalization' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '* text=auto' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '#' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '# The above will handle all files NOT found below' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '#' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.tex\tdiff=tex' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.sty\tdiff=tex' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.cls\tdiff=tex' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.pdf\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.PDF\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.eps\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.EPS\tdiff=astextplain' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.png\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.PNG\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.jpg\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.JPG\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.jpeg\tbinary' >> .gitattributes\n" );
+		fid.write( "\t${ECHO} '*.JPEG\tbinary' >> .gitattributes\n" );
+
+
+
 
 	if options[ "makediff" ]:
 		# right now will use the master branch of .
@@ -1654,7 +1697,7 @@ def main():
 	# parse the parameters
 	params = latexmake_parse_inputs();
 
-	params = parse_latex_file( params[ "basename" ] + ".tex", params );
+	params = parseLatexFile( params[ "basename" ] + ".tex", params );
 
 	# open the Makefile
 	fid = open( "Makefile", "w" );
