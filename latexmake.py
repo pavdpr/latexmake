@@ -1201,21 +1201,6 @@ def write_makefile( fid, options ):
 	fid.write( "\n" );
 	fid.write( "\n" );
 
-	# paths
-
-	fid.write( "# PATHS\n" );
-	fid.write( "\n" );
-
-	tmp = "SUB_PATHS="
-	for f in options[ "sub_paths" ]:
-		tmp += ( " " + f );
-	tmp += ( "\n" );
-	writeLongLines( fid, tmp, 80, 8, 0, False );
-	fid.write( "\n" );
-
-	fid.write( "CLEANDIRS = $(SUB_PATHS:%=clean-%)\n" );
-	fid.write( "\n" );
-
 	# extensions
 
 	fid.write( "\n" );
@@ -1270,10 +1255,8 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
-	tmp = "ALL_AUX_EXT=";
-	for ext in options[ "all_aux_extensions" ]:
-		tmp += ( " *" + ext );
-	tmp += "\n";
+	tmp = "ALL_AUX_EXT=${TEX_AUX_EXT} ${BIB_AUX_EXT} ${FIG_AUX_EXT}" + \
+		"${IDX_AUX_EXT} ${BEAMER_AUX_EXT} ${GLS_AUX_EXT} ${PKG_AUX_EXT}\n"
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n\n" );
 
@@ -1438,7 +1421,7 @@ def write_makefile( fid, options ):
 		fid.write( "\n\n" );
 		fid.write( "# make rtf file\n" );
 		fid.write( "${SOURCE}.rtf: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
-		fid.write( "\t${TEX2RTF} ${TEX2RTF_OPTIONS} ${SOURCE}.tex\n" );
+		fid.write( "\t${LATEX2RTF} ${LATEX2RTF_OPTIONS} ${SOURCE}.tex\n" );
 
 
 	if options[ "has_git" ]:
