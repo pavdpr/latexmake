@@ -143,6 +143,28 @@ class latexmake_makeDoesNotExist( RuntimeError ):
 
 #================================================================================
 #
+#		Debug
+#
+#================================================================================
+
+
+#-------------------------------------------------------------------------------
+def debug_writeFile( filename, content, info="" ):
+	( filename, fileextension ) = os.path.splitext( filename );
+	filename += "_" + "-".join( ( "-".join( str( \
+		datetime.datetime.utcnow() ).split( " " ) ) ).split( ":" ) ) + \
+		info + fileextension;
+
+	fid = open( filename, "w" );
+	fid.write( content );
+	fid.close();
+	return;
+#fed debug_writeFile( filename, content )
+#-------------------------------------------------------------------------------
+
+
+#================================================================================
+#
 #		Executable testing code
 #
 #================================================================================
@@ -376,261 +398,108 @@ def purifyListOfStrings( l, key ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def parseDataInSquiglyBraces( line ):
-	output = [];
-	lstack = [];
+def parseDataInBraces( line, leftBrace, rightBrace ):
+	try:
+		output = [];
+		lstack = [];
 
-	lidx = findUnescaped( line, "{" );
-	ridx = findUnescaped( line, "}" );
+		lidx = findUnescaped( line, leftBrace );
+		ridx = findUnescaped( line, rightBrace );
 
-	# no braces
-	if lidx < 0:
-		return [];
+		# no braces
+		if lidx < 0:
+			return [];
 
-	run = True;
-	while run:
+		run = True;
+		while run:
 
-		if len( lstack ) == 0:
-			if lidx < 0:
-				if ridx < 0:
-					run = False;
+			if len( lstack ) == 0:
+				if lidx < 0:
+					if ridx < 0:
+						run = False;
+					else:
+						message = "In string: '" + line + "':\n";
+						message += "\tunbalanced " + leftBrace + rightBrace;
+						raise latexmake_invalidBracketOrder( message );
 				else:
-					message = "In string: '" + line + "':\n";
-					message += "\tunbalanced {}";
-					raise latexmake_invalidBracketOrder( message );
-			else:
+					lstack.append( lidx );
+					tmp = findUnescaped( line[ lidx+1:], leftBrace );
+					if tmp < 0:
+						lidx = -1;
+					else:
+						lidx += tmp + 1;
+			elif lidx < ridx and lidx > 0:
 				lstack.append( lidx );
-				tmp = findUnescaped( line[ lidx+1:], "{" );
+				tmp = findUnescaped( line[ lidx+1:], leftBrace );
 				if tmp < 0:
 					lidx = -1;
 				else:
 					lidx += tmp + 1;
-		elif lidx < ridx and lidx > 0:
-			lstack.append( lidx );
-			tmp = findUnescaped( line[ lidx+1:], "{" );
-			if tmp < 0:
-				lidx = -1;
-			else:
-				lidx += tmp + 1;
-		elif ridx >= 0:
-			if ( len( lstack  ) == 0 ):
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced {}";
-				raise latexmake_invalidBracketOrder( message );
-			elif lstack[-1] >= ridx:
-				message = "In string: '" + line + "':\n";
-				message += "\t'}' appears before '{'";
-				raise latexmake_invalidBracketOrder( message );
+			elif ridx >= 0:
+				if ( len( lstack  ) == 0 ):
+					message = "In string: '" + line + "':\n";
+					message += "\tunbalanced " + leftBrace + rightBrace;
+					raise latexmake_invalidBracketOrder( message );
+				elif lstack[-1] >= ridx:
+					message = "In string: '" + line + "':\n";
+					message += "\t'" + rightBrace + "' appears before '" + \
+					leftBrace + "'";
+					raise latexmake_invalidBracketOrder( message );
 
-			output.append( line[ lstack.pop() + 1:ridx ] );
-			tmp = findUnescaped( line[ ridx+1:], "}" );
-			if tmp < 0:
-				ridx = -1;
+				output.append( line[ lstack.pop() + 1:ridx ] );
+				tmp = findUnescaped( line[ ridx+1:], rightBrace );
+				if tmp < 0:
+					ridx = -1;
+				else:
+					ridx += tmp + 1;
 			else:
-				ridx += tmp + 1;
-		else:
-			if findUnescaped( line[ ridx+1:], "}" ) < 0:
-				run = False;
-			else:
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced {}";
-				raise latexmake_invalidBracketOrder( message );
+				if findUnescaped( line[ ridx+1:], rightBrace ) < 0:
+					run = False;
+				else:
+					message = "In string: '" + line + "':\n";
+					message += "\tunbalanced " + leftBrace + rightBrace;
+					raise latexmake_invalidBracketOrder( message );
 
-	return output;
+		return output;
+	except:
+		print message
+		raise;
+# fed parseDataInBraces( line, leftBrace, rightBrace )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def parseDataInSquiglyBraces( line ):
+	try:
+		return parseDataInBraces( line, "{", "}" );
+	except:
+		raise;
 # fed parseDataInSquiglyBraces( line )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def parseDataInSquareBraces( line ):
-	output = [];
-	lstack = [];
-
-	lidx = findUnescaped( line, "[" );
-	ridx = findUnescaped( line, "]" );
-
-	# no braces
-	if lidx < 0:
-		return [];
-
-	run = True;
-	while run:
-
-		if len( lstack ) == 0:
-			if lidx < 0:
-				if ridx < 0:
-					run = False;
-				else:
-					message = "In string: '" + line + "':\n";
-					message += "\tunbalanced []";
-					raise latexmake_invalidBracketOrder( message );
-			else:
-				lstack.append( lidx );
-				tmp = findUnescaped( line[ lidx+1:], "[" );
-				if tmp < 0:
-					lidx = -1;
-				else:
-					lidx += tmp + 1;
-		elif lidx < ridx and lidx > 0:
-			lstack.append( lidx );
-			tmp = findUnescaped( line[ lidx+1:], "[" );
-			if tmp < 0:
-				lidx = -1;
-			else:
-				lidx += tmp + 1;
-		elif ridx >= 0:
-			if ( len( lstack  ) == 0 ):
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced []";
-				raise latexmake_invalidBracketOrder( message );
-			elif lstack[-1] >= ridx:
-				message = "In string: '" + line + "':\n";
-				message += "\t']' appears before '['";
-				raise latexmake_invalidBracketOrder( message );
-
-			output.append( line[ lstack.pop() + 1:ridx ] );
-			tmp = findUnescaped( line[ ridx+1:], "]" );
-			if tmp < 0:
-				ridx = -1;
-			else:
-				ridx += tmp + 1;
-		else:
-			if findUnescaped( line[ ridx+1:], "]" ) < 0:
-				run = False;
-			else:
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced []";
-				raise latexmake_invalidBracketOrder( message );
-
-	return output;
+	try:
+		return parseDataInBraces( line, "[", "]" );
+	except:
+		raise;
 # fed parseDataInSquareBraces( line )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def parseDataInParentheses( line ):
-	output = [];
-	lstack = [];
-
-	lidx = findUnescaped( line, "(" );
-	ridx = findUnescaped( line, ")" );
-
-	# no braces
-	if lidx < 0:
-		return [];
-
-	run = True;
-	while run:
-
-		if len( lstack ) == 0:
-			if lidx < 0:
-				if ridx < 0:
-					run = False;
-				else:
-					message = "In string: '" + line + "':\n";
-					message += "\tunbalanced ()";
-					raise latexmake_invalidBracketOrder( message );
-			else:
-				lstack.append( lidx );
-				tmp = findUnescaped( line[ lidx+1:], "(" );
-				if tmp < 0:
-					lidx = -1;
-				else:
-					lidx += tmp + 1;
-		elif lidx < ridx and lidx > 0:
-			lstack.append( lidx );
-			tmp = findUnescaped( line[ lidx+1:], "(" );
-			if tmp < 0:
-				lidx = -1;
-			else:
-				lidx += tmp + 1;
-		elif ridx >= 0:
-			if ( len( lstack  ) == 0 ):
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced ()";
-				raise latexmake_invalidBracketOrder( message );
-			elif lstack[-1] >= ridx:
-				message = "In string: '" + line + "':\n";
-				message += "\t')' appears before '('";
-				raise latexmake_invalidBracketOrder( message );
-
-			output.append( line[ lstack.pop() + 1:ridx ] );
-			tmp = findUnescaped( line[ ridx+1:], ")" );
-			if tmp < 0:
-				ridx = -1;
-			else:
-				ridx += tmp + 1;
-		else:
-			if findUnescaped( line[ ridx+1:], ")" ) < 0:
-				run = False;
-			else:
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced ()";
-				raise latexmake_invalidBracketOrder( message );
-
-	return output;
+	try:
+		return parseDataInBraces( line, "(", ")" );
+	except:
+		raise;
 # fed parseDataInParenthesies( line )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def parseDataInAngleBraces( line ):
-	lstack = [];
-
-	lidx = findUnescaped( line, "<" );
-	ridx = findUnescaped( line, ">" );
-
-	# no braces
-	if lidx < 0:
-		return [];
-
-	run = True;
-	while run:
-
-		if len( lstack ) == 0:
-			if lidx < 0:
-				if ridx < 0:
-					run = False;
-				else:
-					message = "In string: '" + line + "':\n";
-					message += "\tunbalanced <>";
-					raise latexmake_invalidBracketOrder( message );
-			else:
-				lstack.append( lidx );
-				tmp = findUnescaped( line[ lidx+1:], "<" );
-				if tmp < 0:
-					lidx = -1;
-				else:
-					lidx += tmp + 1;
-		elif lidx < ridx and lidx > 0:
-			lstack.append( lidx );
-			tmp = findUnescaped( line[ lidx+1:], "<" );
-			if tmp < 0:
-				lidx = -1;
-			else:
-				lidx += tmp + 1;
-		elif ridx >= 0:
-			if ( len( lstack  ) == 0 ):
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced <>";
-				raise latexmake_invalidBracketOrder( message );
-			elif lstack[-1] >= ridx:
-				message = "In string: '" + line + "':\n";
-				message += "\t'>' appears before '<'";
-				raise latexmake_invalidBracketOrder( message );
-
-			output.append( line[ lstack.pop() + 1:ridx ] );
-			tmp = findUnescaped( line[ ridx+1:], ">" );
-			if tmp < 0:
-				ridx = -1;
-			else:
-				ridx += tmp + 1;
-		else:
-			if findUnescaped( line[ ridx+1:], ">" ) < 0:
-				run = False;
-			else:
-				message = "In string: '" + line + "':\n";
-				message += "\tunbalanced <>";
-				raise latexmake_invalidBracketOrder( message );
-
-	return output;
+	try:
+		return parseDataInBraces( line, "<", ">" );
+	except:
+		raise;
 # fed parseDataInAngleBraces( line )
 #-------------------------------------------------------------------------------
 
@@ -652,19 +521,23 @@ def parseCommaSeparatedData( line ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def prepareTeXfile( texFile ):
+def prepareTeXfile( texFile, filename ):
+	# filename is for debug purposes
 
 	# remove newlines (escaped \ to prevent \\% from being excluded )
 	texFile = re.sub( r"\\\\", "", texFile );
 
 	# merge lines that end in a comment
-	texFile = re.sub( r"(?<!\\)%.*[\n\r]", "", texFile );
+	texFile = re.sub( r"(?<!\\)%.*", "", texFile );
 
-	# remove comma ended lines
-	texFile = re.sub( r",\s*[\n\r]", "", texFile );
+	# recombine comma ended lines
+	texFile = re.sub( r",\s*[\n\r]", ",", texFile );
+
+	# todo?: remove whitespace at end of line.
+	#	-> will probably just slow down code
 
 	return texFile;
-# fed prepareTeXfile( texFile )
+# fed prepareTeXfile( texFile, thisFilename )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -948,7 +821,7 @@ def parse_latex_file( filename, params ):
 	# TODO: look for latexmk directives here
 
 	# prepare the TeX file. (remove comments)
-	texFile = prepareTeXfile( texFile );
+	texFile = prepareTeXfile( texFile, filename );
 
 	# attempt to use existing code to read multiline \usepackages
 	#texFile = " ".join(texFile.split("\n"))
@@ -977,7 +850,7 @@ def parse_latex_file( filename, params ):
 	return params;
 
 # fed parse_latex_file( file )
-#-------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
 
 
 #================================================================================
