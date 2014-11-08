@@ -912,24 +912,11 @@ def latexmake_default_params():
 		params[ "texmf_path" ] = "~/Libarary/texmf"
 	else:
 		params[ "texmf_path" ] = None;
-	params[ "has_git" ] = functionExists( "git" );
-	if params[ "has_git" ]:
-		params[ "git" ] = which( "git" );
-	else:
-		params[ "git" ] = "";
-		params[ "makediff" ] = False;
-		print "Warning!";
-		print "  git does not exist.";
-		print "  Download from ";
-		print "  The following makefile options will not be built:";
-		print "    gitbkup";
-		print "    .git";
-		print "    .gitignore";
-		print "    diff";
 
 	params[ "has_latexpand" ] = functionExists( "latexpand" );
 	if params[ "has_latexpand" ]:
-		params[ "latexpand" ] = which( "latexpand" );
+		params[ "latexpand" ] = "latexpand";
+		params[ "tex_commands" ].append( "latexpand" );
 	else:
 		params[ "latexpand" ] = "";
 		params[ "makediff" ] = False;
@@ -946,15 +933,10 @@ def latexmake_default_params():
 	else:
 		params[ "bibsort" ] = "";
 
-
-	if not functionExists( "make" ):
-		raise latexmake_makeDoesNotExist( "make is not in your path" );
-	else:
-		params[ "make" ] = which( "make" );
-
 	params[ "has_latexdiff" ] = functionExists( "latexdiff" );
 	if params[ "has_latexdiff" ]:
-		params[ "latexdiff" ] = which( "latexdiff" );
+		params[ "latexdiff" ] = "latexdiff";
+		params[ "tex_commands" ].append( "latexdiff" );
 	else:
 		params[ "latexdiff" ] = "";
 		params[ "makediff" ] = False;
@@ -964,21 +946,10 @@ def latexmake_default_params():
 		print "  The following makefile options will not be built:";
 		print "    diff";
 
-	params[ "has_mktemp" ] = functionExists( "mktemp" );
-	if params[ "has_mktemp" ]:
-		params[ "mktemp" ] = which( "mktemp" );
-	else:
-		params[ "mktemp" ] = "";
-		params[ "makediff" ] = False;
-		print "Warning!";
-		print "  mktemp does not exist.";
-		print "  The following makefile options will not be built:";
-		print "    diff";
-
-
  	params[ "has_latex2rtf" ] = functionExists( "latex2rtf" );
  	if params[ "has_latex2rtf" ]:
-		params[ "latex2rtf" ] = which( "latex2rtf" );
+		params[ "latex2rtf" ] = "latex2rtf";
+		params[ "tex_commands" ].append( "latex2rtf" );
 	else:
 		params[ "latex2rtf" ] = "";
 		print "Warning!";
@@ -992,7 +963,9 @@ def latexmake_default_params():
 	params[ "rm_options" ] = "-rf";
 	params[ "echo" ] = "echo";
 	params[ "find" ] = "find";
-	params[ "unix_commands" ] = [ "rm", "echo", "find" ];
+	params[ "cd" ] = "cd";
+	params[ "pwd" ] = "pwd";
+	params[ "unix_commands" ] = [ "rm", "echo", "find", "cd", "pwd" ];
 	if ( platform.system() == "Darwin" ):
 		params[ "use_open" ] = True;
 		params[ "open" ] = "open";
@@ -1000,9 +973,43 @@ def latexmake_default_params():
 	else:
 		params[ "use_open" ] = False;
 
+	params[ "has_git" ] = functionExists( "git" );
+	if params[ "has_git" ]:
+		params[ "git" ] = "git";
+		params[ "unix_commands" ].append( "git" );
+	else:
+		params[ "git" ] = "";
+		params[ "makediff" ] = False;
+		print "Warning!";
+		print "  git does not exist.";
+		print "  Download from ";
+		print "  The following makefile options will not be built:";
+		print "    gitbkup";
+		print "    .git";
+		print "    .gitignore";
+		print "    diff";
+
+	if not functionExists( "make" ):
+		raise latexmake_makeDoesNotExist( "make is not in your path" );
+	else:
+		params[ "make" ] = "make"
+		params[ "unix_commands" ].append( "make" );
+
+	params[ "has_mktemp" ] = functionExists( "mktemp" );
+	if params[ "has_mktemp" ]:
+		params[ "mktemp" ] = "mktemp";
+		params[ "unix_commands" ].append( "mktemp" );
+	else:
+		params[ "mktemp" ] = "";
+		params[ "makediff" ] = False;
+		print "Warning!";
+		print "  mktemp does not exist.";
+		print "  The following makefile options will not be built:";
+		print "    diff";
+
 	params[ "packages" ] = [];
 	params[ "use_absolute_file_paths" ] = False;
-	params[ "use_absolute_executable_paths" ] = True;
+	params[ "use_absolute_executable_paths" ] = False;
 	params[ "verbose" ] = False;
 
 
@@ -1133,7 +1140,7 @@ def write_makefile( fid, options ):
 	fid.write( "\n\n" );
 
 	# write the tex engines
-	fid.write( "# TeX commands and options\n" );
+	fid.write( "# TeX commands\n" );
 	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + "}\n" );
 	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + "}\n" );
 	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + "}\n" );
@@ -1141,18 +1148,20 @@ def write_makefile( fid, options ):
 	fid.write( "\n" );
 
 	# write the tex options
-	fid.write( "# TeX commands\n" );
+	fid.write( "# TeX options\n" );
 	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
 	fid.write( "LATEX2RTF_OPTIONS=" + options[ "latex2rtf_options" ] + "\n" );
 	fid.write( "\n" );
 
 	# write the other enigines of other uitilies
-	fid.write( "# commands\n" )
+	fid.write( "# UNIX commands and options\n" )
 	fid.write( "MAKE=" + options[ "make" ] + "\n" );
 	fid.write( "RM=" + options[ "rm" ] + "\n" );
 	fid.write( "RMO=" + options[ "rm_options" ] + "\n" );
 	fid.write( "ECHO=" + options[ "echo" ] + "\n" );
 	fid.write( "FIND=" + options[ "find" ] + "\n" );
+	fid.write( "CD=" + options[ "cd" ] + "\n" );
+	fid.write( "PWD=" + options[ "pwd" ] + "\n" );
 	if options[ "has_git" ]:
 		fid.write( "GIT=" + options[ "git" ] + "\n" );
 	if options[ "use_open" ]:
@@ -1543,8 +1552,6 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '*.JPEG\tbinary' >> .gitattributes\n" );
 
 
-
-
 	if options[ "makediff" ]:
 		# right now will use the master branch of .
 		# latex diff
@@ -1552,38 +1559,47 @@ def write_makefile( fid, options ):
 		fid.write( "# make difference\n" );
 		fid.write( ".PHONY: diff\n" );
 		fid.write( "diff: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
+		# get the working directory
+		fid.write( "\t$(eval WD := $(shell ${PWD}))\n" );
+		fid.write( "\t@echo 'Working Directory:  ' $(WD)\n"); # I have no idea why @echo works. I stole it from http://stackoverflow.com/questions/1909188/define-make-variable-at-rule-execution-time
 		# make a temporary directory
 		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
-		fid.write( "\t@echo 'created a temp directory in ' $(TMP)\n"); # I have no idea why @echo works. I stole it from http://stackoverflow.com/questions/1909188/define-make-variable-at-rule-execution-time
-		# # make some folders
-		# fid.write( "\tmkdir ${TMP}/new\n" );
-		# fid.write( "\tmkdir ${TMP}/old\n" );
-		fid.write( "\tgit clone . ${TMP}\n" );
-
+		fid.write( "\t@echo 'Temporary directory:' $(TMP)\n");
+		# Clone the repo to tmp
+		fid.write( "\tgit clone . ${TMP}/git\n" ); # logic is bad: ${TMP} exists...must be subfolder
+		fid.write( "\t${CD} ${TMP}/git; \\\n" );
+		fid.write( "\t${LATEXPAND} ${SOURCE}.tex >> ${SOURCE}.new.tex; \\\n" );
+		fid.write( "\t${LATEXPAND} ${SOURCE}.tex >> ${SOURCE}.old.tex; \\\n" );
+		fid.write( "\t${ECHO} 'TODO: Get figures \\\n" );
+		fid.write( "\t${ECHO} 'TODO: Get old version' \\\n" );
+		fid.write( "\t${LATEXDIFF} ${SOURCE}.old.tex ${SOURCE}.new.tex > ${SOURCE}.diff.tex' \\\n" );
+		fid.write( "\t${ECHO} 'TODO: Run latexmake' \\\n" );
+		fid.write( "\t${ECHO} 'TODO: Copy diff to wd' \\\n" );
+		fid.write( "\t${CD} ${WD}\n" );
 		# make the original file
-		fid.write( "\t${LATEXPAND} ${TMP}/${SOURCE}.tex > ${TMP}/orig.tex\n" );
-		fid.write( "\t${LATEXDIFF} ${TMP}/orig.tex ${SOURCE}_one_file.tex > ${SOURCE}_diff.tex\n" );
+		#fid.write( "\t${LATEXPAND} ${TMP}/${SOURCE}.tex > ${TMP}/orig.tex\n" );
+		#fid.write( "\t${LATEXDIFF} ${TMP}/orig.tex ${SOURCE}_one_file.tex > ${SOURCE}_diff.tex\n" );
 
-		# compile the difference file
-		if ( options[ "make_bib_in_default" ] or \
-			options[ "make_index_in_default" ] or \
-			options[ "make_glossary_in_default" ] ):
-			fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
-			if options[ "make_bib_in_default" ]:
-				fid.write( "\t${BIB_ENGINE} ${SOURCE}_diff\n" );
-			if options[ "make_index_in_default" ]:
-				fid.write( "\t${IDX_ENGINE} ${SOURCE}_diff\n" );
-			if options[ "make_glossary_in_default" ]:
-				fid.write( "\t${GLS_ENGINE} ${SOURCE}_diff\n" );
-			fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
-			fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
-			if options[ "use_open" ]:
-				fid.write( "\t${OPEN} ${SOURCE}_diff.pdf\n" );
+		# # compile the difference file
+		# if ( options[ "make_bib_in_default" ] or \
+		# 	options[ "make_index_in_default" ] or \
+		# 	options[ "make_glossary_in_default" ] ):
+		# 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
+		# 	if options[ "make_bib_in_default" ]:
+		# 		fid.write( "\t${BIB_ENGINE} ${SOURCE}_diff\n" );
+		# 	if options[ "make_index_in_default" ]:
+		# 		fid.write( "\t${IDX_ENGINE} ${SOURCE}_diff\n" );
+		# 	if options[ "make_glossary_in_default" ]:
+		# 		fid.write( "\t${GLS_ENGINE} ${SOURCE}_diff\n" );
+		# 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
+		# 	fid.write( "\t${TEX_ENGINE} ${TEX_OPTIONS} ${SOURCE}_diff.tex\n" );
+		# 	if options[ "use_open" ]:
+		# 		fid.write( "\t${OPEN} ${SOURCE}_diff.pdf\n" );
 
 
 
 		# remove the tempory directory
-		fid.write( "\t${RM} ${RMO} ${TMP}\n" );
+		#fid.write( "\t${RM} ${RMO} ${TMP}\n" );
 
 	# latex diff
 	fid.write( "\n\n" );
