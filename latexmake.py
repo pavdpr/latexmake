@@ -595,7 +595,7 @@ def findPackages( texFile, params, thisFileName ):
 
 				elif package == "epstopdf":
 					if params[ "tex_engine" ] == "PDFLATEX":
-						params[ "fig_extensions" ] += ".eps";
+						params[ "fig_extensions" ].append( ".eps" );
 
 				elif package == "makeidx":
 					params[ "make_index_in_default" ] = True;
@@ -617,9 +617,9 @@ def findGraphicsPaths( texFile, params, thisFileName ):
 			r"[\{\}]" ):
 			if os.path.isdir( part ) and os.path.exists( part ):
 				# we are a valid path
-				params[ "graphics_paths" ].append( os.path.abspath( part ) );
-				if os.path.abspath( part ) not in params[ "sub_paths" ]:
-					params[ "sub_paths" ].append( os.path.abspath( part ) );
+				params[ "graphics_paths" ].append( os.path.relpath( part ) );
+				if os.path.relpath( part ) not in params[ "sub_paths" ]:
+					params[ "sub_paths" ].append( os.path.relpath( part ) );
 			else:
 				#TODO?: raise exception
 				warning( "In \"" + thisFileName + "\": \"" + part + \
@@ -644,48 +644,41 @@ def findGraphicsExtensions( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
+def findFigurePath( filename, params ):
+	# TODO?: do I want to return all possible figures instead of the first?
+	# try to find the figure in the graphics paths
+	for pth in params[ "graphics_paths" ]:
+		if os.path.isfile( os.path.join( pth, filename ) ):
+			params[ "fig_files" ].append( os.path.join( pth, filename ) );
+			return params;
+
+	# we did not find a match without extensions
+	# search for a match with a graphics extension
+	for pth in params[ "graphics_paths" ]:
+		for ext in params[ "fig_extensions" ]:
+			tmp = os.path.join( pth, filename + ext );
+			print tmp
+			if os.path.isfile( os.path.join( pth, filename + ext ) ):
+				params[ "fig_files" ].append( os.path.join( pth, filename + ext ) );
+				return params;
+
+	print "Figure '" + filename + "' not found in the graphics paths"
+
+	return params;
+# fed findFigurePath( filename, params )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 def findFigures( texFile, params, thisFileName ):
-	# TODO: also get pgf figures
-	m = re.findall( r"\\includegraphics(\[.*\])?\s*(\{[\w\/ ]\})", texFile );
+	# TODO: also get pgf/tikz figures
+	m = re.findall( r"\\includegraphics(\[.*\])?\s*\{(.*)\}", texFile );
 	if not m:
 		return params;
 
-	# figures = [ [ parseDataInSquiglyBraces( fig )[0]\
-	# for fig in figTuple if fig ] for figTuple in m ]
+	# get the figure path
+	for figure in m:
+		params = findFigurePath( figure[ 1 ], params );
 
-	figures = [];
-	for figTuple in m:
-		for fig in figTuple:
-			if fig:
-				figures += parseDataInSquiglyBraces( fig );
-
-
-
-	for fig in figures:
-		# try to find possible figures without adding an extension
-		posibleFigures = \
-		[ os.path.abspath( os.path.join( pth, fig ) ) \
-		for pth in params[ "graphics_paths" ] \
-		if os.path.isfile( os.path.join( pth, fig ) ) ];
-
-		# retry but append paths this time
-		if not posibleFigures:
-				posibleFigures = \
-				[ os.path.abspath( os.path.join( pth, fig + ext ) ) \
-				for pth in params[ "graphics_paths" ] \
-				for ext in params[ "fig_extensions" ] \
-				if os.path.isfile( os.path.join( pth, fig + ext ) )];
-
-		if posibleFigures:
-			params[ "fig_files" ].append( posibleFigures[ 0 ] );
-		elif params[ "verbose" ]:
-			warning( "Figure \"" + fig + "\" not found" );
-
-	# print figures;
-		# for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
-		# 	"\{\}" ):
-		# 	figure = parseCommaSeparatedData( part );
-		# 	figures += figure;
 	return params;
 # fed findFigures( texFile, params )
 #-------------------------------------------------------------------------------
