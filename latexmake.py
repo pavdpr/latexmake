@@ -294,7 +294,7 @@ def compliment( data, exclude ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def parseLongLines( line, lineLength=80, tabLength=8, numTabs=1, extra=False ):
+def parseLongLines( line, lineLength=80, tabLength=8, numTabs=0, extra=False ):
 	if numTabs < 0:
 		numTabs = 0;
 
@@ -332,7 +332,7 @@ def parseLongLines( line, lineLength=80, tabLength=8, numTabs=1, extra=False ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def writeLongLines( fid, line, lineLength=80, tabLength=8, numTabs=1, extra=False ):
+def writeLongLines( fid, line, lineLength=80, tabLength=8, numTabs=0, extra=False ):
 	lines = parseLongLines( line, lineLength, tabLength, numTabs, extra );
 	if numTabs < 0:
 		numTabs = 0;
@@ -541,7 +541,7 @@ def prepareTeXfile( texFile, filename ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findPackages( texFile, params, thisFileName ):
+def findPackages( texFile, params, filename ):
 	# TODO: This does not work in cases like
 	# \usepackage[sorting=ydnt,		% reverse sort by date
 	# bibstyle=authoryear,			% use author year style (not sure how much this does w/o /cite{})
@@ -574,7 +574,7 @@ def findPackages( texFile, params, thisFileName ):
 			packages += p;
 			for package in p:
 				# check to see if it is local
-				params = findLocalStyFiles( package, params, thisFileName );
+				params = findLocalStyFiles( package, params, filename );
 				if package == "biblatex":
 					# TODO finish
 					m = re.search( r"\\usepackage(\[.*\]?\{\s*biblatex\s*\})", \
@@ -610,7 +610,7 @@ def findPackages( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findGraphicsPaths( texFile, params, thisFileName ):
+def findGraphicsPaths( texFile, params, filename ):
 	locs = re.findall( r"\\graphicspath\{(.*)\}", texFile );
 	for line in locs:
 		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
@@ -622,14 +622,14 @@ def findGraphicsPaths( texFile, params, thisFileName ):
 					params[ "sub_paths" ].append( os.path.relpath( part ) );
 			else:
 				#TODO?: raise exception
-				warning( "In \"" + thisFileName + "\": \"" + part + \
+				warning( "In \"" + filename + "\": \"" + part + \
 					"\" is not a valid graphicspath" );
 	return params;
 # fed findGraphicsPaths( texFile, params )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findGraphicsExtensions( texFile, params, thisFileName ):
+def findGraphicsExtensions( texFile, params, filename ):
 	locs = re.findall( r"\\DeclareGraphicsExtensions\{(.*)\}", texFile );
 	if not locs:
 		return params;
@@ -667,7 +667,7 @@ def findFigurePath( filename, params ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findFigures( texFile, params, thisFileName ):
+def findFigures( texFile, params, filename ):
 	# TODO: also get pgf/tikz figures
 	m = re.findall( r"\\includegraphics(\[.*\])?\s*\{(.*)\}", texFile );
 	if not m:
@@ -682,47 +682,42 @@ def findFigures( texFile, params, thisFileName ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findSubTeXfiles( texFile, params, thisFileName ):
-	key = r"\\(include|input)(\[.*\])?(\{[\w\/ ]*\})";
-	locs = re.findall( key, texFile );
-	files = [];
-	for tmp in locs:
-		line = tmp[ -1 ];
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
-		 	r"[\{\}]" ):
-			p = parseCommaSeparatedData( part );
-			for subfile in parseCommaSeparatedData( part ):
-				f = None;
-				if os.path.isfile( subfile ):
-					f = os.path.abspath( subfile );
+def findSubTeXfiles( texFile, params, filename ):
+	key = r"\\(include|input)(\[.*\])?\{([\w\.\/\\\- ]*)\}";
+	regexfound = re.findall( key, texFile );
 
-				elif os.path.isfile( subfile + ".tex" ):
-					f = os.path.abspath( subfile + ".tex" );
+	for item in regexfound:
+		# the file is the last part of item
+		newfilename = item[ -1 ];
 
-				elif params[ "verbose" ]:
-					#TODO?: raise exception
-					warning( "In \"" + thisFileName + \
-						"\" tex file Not Found: \"" + subfile + "\"" );
+		# check that the file exists
+		f = None;
+		if os.path.isfile( newfilename ):
+			f = os.path.relpath( newfilename );
+		elif os.path.isfile( newfilename + ".tex" ):
+			f = os.path.relpath( newfilename + ".tex" );
+		elif params[ "verbose" ]:
+ 			warning( "In \"" + filename + \
+			"\" tex file Not Found: \"" + newfilename + "\"" );
 
-				if f:
-					params[ "tex_files" ].append( f );
-					( tmp, _ ) = os.path.split( f );
-					tmp = os.path.abspath( tmp );
-					if tmp not in params[ "sub_paths" ]:
-						params[ "sub_paths" ].append( tmp );
+ 		# add f to list of files
+		if f:
+			params[ "tex_files" ].append( f );
 
-					# parse the sub tex file
-					params = parseLatexFile( f, params );
+			# get the path
+			( pth, _ ) = os.path.split( f );
+			if os.path.relpath( pth ) not in params[ "sub_paths" ]:
+				params[ "sub_paths" ].append( os.path.relpath( pth ) );
 
-
-
+			# parse the subfiles
+			params = parseLatexFile( f, params );
 
 	return params;
 # fed findSubTeXfiles( texFile, params )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findBibliographies( texFile, params, thisFileName ):
+def findBibliographies( texFile, params, filename ):
 	if "biblatex" in params[ "packages" ]:
 		key = r"\\addbibresource(\{.*\})";
 	else:
@@ -741,18 +736,18 @@ def findBibliographies( texFile, params, thisFileName ):
 						".bib" ) );
 				elif params[ "verbose" ]:
 					#TODO?: raise exception
-					warning( "In \"" + thisFileName + \
+					warning( "In \"" + filename + \
 						"\" bib file Not Found: \"" + bib + "\"" );
 
 	if ( locs ):
 		params[ "make_bib_in_default" ] = True;
 
 	return params;
-# fed findBibliographies( texFile, params, thisFileName )
+# fed findBibliographies( texFile, params, filename )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findGlossary( texFile, params, thisFileName ):
+def findGlossary( texFile, params, filename ):
 	if "glossaries" not in params[ "packages" ]:
 		# if glossary package is not defined, we cannot have a glossary
 		return params;
@@ -762,19 +757,19 @@ def findGlossary( texFile, params, thisFileName ):
 	if hasGloss:
 		params[ "make_glossary_in_default" ] = True;
 	return params;
-# fed findGlossary( texFile, params, thisFileName )
+# fed findGlossary( texFile, params, filename )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findLocalClsFiles( clsname, params, thisFileName ):
+def findLocalClsFiles( clsname, params, filename ):
 	# TODO: impliment
 	# TODO: also look in texmfpath for non-standard cls files
 	return params;
-# fed findLocalClsFiles( clsname, params, thisFileName )
+# fed findLocalClsFiles( clsname, params, filename )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findLocalStyFiles( styname, params, thisFileName ):
+def findLocalStyFiles( styname, params, filename ):
 	# TODO: also look in texmfpath for non-standard sty files
 	for root, dirs, files in os.walk( params[ "basepath" ] ):
 		if ".git" in dirs:
@@ -796,7 +791,7 @@ def findLocalStyFiles( styname, params, thisFileName ):
 			params = parseLatexFile( f, params )
 
 	return params;
-# fed findLocalStyFiles( styfilename, params, thisFileName )
+# fed findLocalStyFiles( styfilename, params, filename )
 #-------------------------------------------------------------------------------
 
 
