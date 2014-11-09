@@ -656,8 +656,6 @@ def findFigurePath( filename, params ):
 	# search for a match with a graphics extension
 	for pth in params[ "graphics_paths" ]:
 		for ext in params[ "fig_extensions" ]:
-			tmp = os.path.join( pth, filename + ext );
-			print tmp
 			if os.path.isfile( os.path.join( pth, filename + ext ) ):
 				params[ "fig_files" ].append( os.path.join( pth, filename + ext ) );
 				return params;
@@ -822,14 +820,11 @@ def parseLatexFile( filename, params ):
 	# search for packages
 	params = findPackages( texFile, params, filename );
 
-	# search for included tex files
-	params = findSubTeXfiles( texFile, params, filename );
+	# find graphics paths
+	params = findGraphicsPaths( texFile, params, filename );
 
 	# search for Graphics Extensions
 	params = findGraphicsExtensions( texFile, params, filename );
-
-	# find graphics paths
-	params = findGraphicsPaths( texFile, params, filename );
 
 	# search for figures
 	params = findFigures( texFile, params, filename );
@@ -839,6 +834,9 @@ def parseLatexFile( filename, params ):
 
 	# search to see if we are makeing a glossary
 	params = findGlossary( texFile, params, filename );
+
+	# search for included tex files
+	params = findSubTeXfiles( texFile, params, filename );
 
 	return params;
 
@@ -1257,8 +1255,8 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n" );
 
-	tmp = "ALL_AUX_EXT=${TEX_AUX_EXT} ${BIB_AUX_EXT} ${FIG_AUX_EXT}" + \
-		"${IDX_AUX_EXT} ${BEAMER_AUX_EXT} ${GLS_AUX_EXT} ${PKG_AUX_EXT}\n"
+	tmp = "ALL_AUX_EXT=${TEX_AUX_EXT} ${BIB_AUX_EXT} ${IDX_AUX_EXT} " + \
+		"${BEAMER_AUX_EXT} ${GLS_AUX_EXT} ${PKG_AUX_EXT} ${FIG_AUX_EXT}\n"
 	writeLongLines( fid, tmp, 80, 8, 0, False );
 	fid.write( "\n\n" );
 
