@@ -294,7 +294,7 @@ def compliment( data, exclude ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def parseLongLines( line, lineLength, tabLength, numTabs, extra ):
+def parseLongLines( line, lineLength=80, tabLength=8, numTabs=1, extra=False ):
 	if numTabs < 0:
 		numTabs = 0;
 
@@ -332,7 +332,7 @@ def parseLongLines( line, lineLength, tabLength, numTabs, extra ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def writeLongLines( fid, line, lineLength, tabLength, numTabs, extra ):
+def writeLongLines( fid, line, lineLength=80, tabLength=8, numTabs=1, extra=False ):
 	lines = parseLongLines( line, lineLength, tabLength, numTabs, extra );
 	if numTabs < 0:
 		numTabs = 0;
@@ -1169,35 +1169,35 @@ def write_makefile( fid, options ):
 	for f in options[ "tex_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "BIB_FILES=";
 	for f in options[ "bib_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "FIG_FILES=";
 	for f in options[ "fig_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "STY_FILES=";
 	for f in options[ "sty_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "CLS_FILES=";
 	for f in options[ "cls_files" ]:
 		tmp += ( " " + f );
 	tmp += ( "\n" );
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 	fid.write( "\n" );
 
@@ -1209,14 +1209,14 @@ def write_makefile( fid, options ):
 	for ext in options[ "tex_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "BIB_AUX_EXT=";
 	for ext in options[ "bib_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "FIG_AUX_EXT=";
@@ -1224,40 +1224,46 @@ def write_makefile( fid, options ):
 		for ext in options[ "figure_aux_extensions" ]:
 			tmp += ( " " + os.path.join( pth, "*" + ext ) );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "IDX_AUX_EXT=";
 	for ext in options[ "idx_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "BEAMER_AUX_EXT=";
 	for ext in options[ "beamer_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "GLS_AUX_EXT=";
 	for ext in options[ "glossary_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "PKG_AUX_EXT=";
 	for ext in options[ "pkg_aux_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
 	tmp = "ALL_AUX_EXT=${TEX_AUX_EXT} ${BIB_AUX_EXT} ${IDX_AUX_EXT} " + \
 		"${BEAMER_AUX_EXT} ${GLS_AUX_EXT} ${PKG_AUX_EXT} ${FIG_AUX_EXT}\n"
-	writeLongLines( fid, tmp, 80, 8, 0, False );
+	writeLongLines( fid, tmp );
+	fid.write( "\n\n" );
+
+	tmp = "GRAPHICS_PATHS=";
+	tmp += " ".join( options[ "graphics_paths" ] );
+	tmp += "\n";
+	writeLongLines( fid, tmp );
 	fid.write( "\n\n" );
 
 	fid.write( "#" * 80 + "\n" );
