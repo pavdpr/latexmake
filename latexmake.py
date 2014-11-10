@@ -611,14 +611,20 @@ def findPackages( texFile, params, filename ):
 
 #-------------------------------------------------------------------------------
 def findGraphicsPaths( texFile, params, filename ):
+	# find all strings matching regex
 	locs = re.findall( r"\\graphicspath\{(.*)\}", texFile );
+	# for each match
 	for line in locs:
+		# separate by sub squigly braces
 		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
 			r"[\{\}]" ):
 			if os.path.isdir( part ) and os.path.exists( part ):
 				# we are a valid path
-				params[ "graphics_paths" ].append( os.path.relpath( part ) );
+				if os.path.relpath( part ) not in params[ "graphics_paths" ]:
+					# append to list of graphics paths
+					params[ "graphics_paths" ].append( os.path.relpath( part ) );
 				if os.path.relpath( part ) not in params[ "sub_paths" ]:
+					# append to list of sub paths
 					params[ "sub_paths" ].append( os.path.relpath( part ) );
 			else:
 				#TODO?: raise exception
@@ -1014,6 +1020,7 @@ def latexmake_default_params():
 	params[ "glossary_aux_extensions" ] = [ ".acn", ".acr", ".alg", ".glg", \
 		".glo", ".gls", ".ist", ".lem", ".glsdefs" ];
 	params[ "pkg_aux_extensions" ] = [ ".mw" ];
+	params[ "other_ignore_extensions" ] = [ ".zip", ".tar", ".gz", ".tar.gz" ];
 
 	params[ "clean_aux_extensions" ] = params[ "tex_aux_extensions" ] + \
 	params[ "beamer_aux_extensions" ] + params[ "bib_aux_extensions" ] + \
@@ -1480,11 +1487,6 @@ def write_makefile( fid, options ):
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
-		fid.write( "\t${ECHO} '# package auxiliary files' >> .gitignore\n" );
-		for ext in options[ 'pkg_aux_extensions' ]:
-			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
-
-		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# glossary auxiliary files' >> .gitignore\n" );
 		for ext in options[ 'glossary_aux_extensions' ]:
 			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
@@ -1513,6 +1515,11 @@ def write_makefile( fid, options ):
 		fid.write( "\t${ECHO} '' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '# vi/vim swap file' >> .gitignore\n" );
 		fid.write( "\t${ECHO} '*.swp' >> .gitignore\n" );
+
+		fid.write( "\t${ECHO} '' >> .gitignore\n" );
+		fid.write( "\t${ECHO} '# other file types to ignore' >> .gitignore\n" );
+		for ext in options[ "other_ignore_extensions" ]:
+			fid.write( "\t${ECHO} '*" + ext + "' >> .gitignore\n" );
 
 		# .gitattributes
 		# see https://github.com/Danimoth/gitattributes
