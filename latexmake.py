@@ -669,7 +669,7 @@ def findFigurePath( filename, params ):
 #-------------------------------------------------------------------------------
 def findFigures( texFile, params, filename ):
 	# TODO: also get pgf/tikz figures
-	m = re.findall( r"\\includegraphics(\[.*\])?\s*\{(.*)\}", texFile );
+	m = re.findall( r"\\includegraphics(\[[\w\=\. ,\d_\\]*\])?\s*\{([\w\=\. ,\d_\\]*)\}", texFile );
 	if not m:
 		return params;
 
@@ -951,7 +951,9 @@ def latexmake_default_params():
 	params[ "find" ] = "find";
 	params[ "cd" ] = "cd";
 	params[ "pwd" ] = "pwd";
-	params[ "unix_commands" ] = [ "rm", "echo", "find", "cd", "pwd" ];
+	params[ "tar" ] = "tar";
+	params[ "zip" ] = "zip";
+	params[ "unix_commands" ] = [ "rm", "echo", "find", "cd", "pwd", "tar", "zip" ];
 	if ( platform.system() == "Darwin" ):
 		params[ "use_open" ] = True;
 		params[ "open" ] = "open";
@@ -1148,6 +1150,8 @@ def write_makefile( fid, options ):
 	fid.write( "FIND=" + options[ "find" ] + "\n" );
 	fid.write( "CD=" + options[ "cd" ] + "\n" );
 	fid.write( "PWD=" + options[ "pwd" ] + "\n" );
+	fid.write( "TAR=" + options[ "tar" ] + "\n" );
+	fid.write( "ZIP=" + options[ "zip" ] + "\n" );
 	if options[ "has_git" ]:
 		fid.write( "GIT=" + options[ "git" ] + "\n" );
 	if options[ "use_open" ]:
@@ -1593,25 +1597,47 @@ def write_makefile( fid, options ):
 		# remove the tempory directory
 		#fid.write( "\t${RM} ${RMO} ${TMP}\n" );
 
-	# latex diff
+		# latex diff
+		fid.write( "\n\n" );
+		fid.write( "# clean difference stuff\n" );
+		fid.write( ".PHONY: cleandiff\n" );
+		fid.write( "cleandiff:\n" );
+		fid.write( "\t${RM} ${RMO} ${SOURCE}_diff.*" );
+
+
+	# zipped files (include pdf)
+	# TODO: figure out pdf/ps/eps/dvi output extension
 	fid.write( "\n\n" );
-	fid.write( "# clean difference stuff\n" );
-	fid.write( ".PHONY: cleandiff\n" );
-	fid.write( "cleandiff:\n" );
-	fid.write( "\t${RM} ${RMO} ${SOURCE}_diff.*" );
+	fid.write( "# make zip (include output document)\n" );
+	fid.write( ".PHONY: zip\n" );
+	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
+	tmp += "{SOURCE}.pdf Makefile";
+	writeLongLines( fid, "zip: " + tmp + "\n" )
+	writeLongLines( fid, "${ZIP} -r ${SOURCE}.zip " + tmp + "\n", numTabs = 1 );
 
-	if options[ "has_latexpand" ]:
-		# expand source
-		fid.write( "\n\n" );
-		fid.write( "# Expand Source \n" );
-		fid.write( ".PHONY: onefile\n" );
-		fid.write( "onefile: \n" );
-		fid.write( "\t${LATEXPAND} ${SOURCE}.tex > ${SOURCE}_one_file.tex\n" );
+	fid.write( "\n\n" );
+	fid.write( "# make zip (source only)\n" );
+	fid.write( ".PHONY: zipsource\n" );
+	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
+	tmp += "Makefile";
+	writeLongLines( fid, "zipsource: " + tmp + "\n" )
+	writeLongLines( fid, "${ZIP} -r ${SOURCE}.zip " + tmp + "\n", numTabs = 1 );
 
-		fid.write( "\n\n" );
-		fid.write( "# Expand Source \n" );
-		fid.write( "${SOURCE}_one_file.tex: ${TEX_FILES}\n" );
-		fid.write( "\t${LATEXPAND} ${SOURCE}.tex > ${SOURCE}_one_file.tex\n" );
+	fid.write( "\n\n" );
+	fid.write( "# make gzip (source only)\n" );
+	fid.write( ".PHONY: gzip\n" );
+	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
+	tmp += "Makefile";
+	writeLongLines( fid, "gzip: " + tmp + "\n" )
+	writeLongLines( fid, "${TAR} -cvzf ${SOURCE}.tar.gz " + tmp + "\n", numTabs = 1 );
+
+	fid.write( "\n\n" );
+	fid.write( "# make gzip (source only)\n" );
+	fid.write( ".PHONY: gzipsource\n" );
+	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
+	tmp += "Makefile";
+	writeLongLines( fid, "gzipsource: " + tmp + "\n" )
+	writeLongLines( fid, "${TAR} -cvzf ${SOURCE}.tar.gz " + tmp + "\n", numTabs = 1 );
 
 
 	# tools
