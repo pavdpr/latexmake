@@ -576,7 +576,7 @@ def findPackages( texFile, params, filename ):
 				params = findLocalStyFiles( package, params, filename );
 				if package == "biblatex":
 					# TODO finish
-					m = params[ "biblatexregex" ].search( texFile );
+					m = params[ "biblatexpkg_regex" ].search( texFile );
 					optionStrings = parseDataInSquareBraces( m.group() );
 					for optionString in optionStrings:
 						options = parseCommaSeparatedData( optionString );
@@ -586,10 +586,7 @@ def findPackages( texFile, params, filename ):
 							if opt[ 0 ] == "backend":
 								backend = opt[ 1 ];
 								if backend == "biber":
-									params[ "bibliographyregex" ] = \
-										re.compile( r"\\addbibresource(\{[" + \
-										params[ "regex_directories" ] + \
-										r"]*\})" );
+									params[ "bibliography_regex" ] = params[ "biber_regex" ];
 						if functionExists( backend ):
 							params[ "bib_engine" ] = backend.upper();
 						else:
@@ -615,7 +612,7 @@ def findPackages( texFile, params, filename ):
 #-------------------------------------------------------------------------------
 def findGraphicsPaths( texFile, params, filename ):
 	# find all strings matching regex
-	locs = params[ "graphicspathregex" ].findall( texFile );
+	locs = params[ "graphicspath_regex" ].findall( texFile );
 	# for each match
 	for line in locs:
 		# separate by sub squigly braces
@@ -639,7 +636,7 @@ def findGraphicsPaths( texFile, params, filename ):
 
 #-------------------------------------------------------------------------------
 def findGraphicsExtensions( texFile, params, filename ):
-	locs = params[ "graphicsextensionsregex" ].findall( texFile );
+	locs = params[ "graphicsextensions_regex" ].findall( texFile );
 	if not locs:
 		return params;
 	for item in locs:
@@ -678,7 +675,7 @@ def findFigurePath( filename, params ):
 #-------------------------------------------------------------------------------
 def findFigures( texFile, params, filename ):
 	# TODO: also get pgf/tikz figures
-	m = params[ "includegraphicsregex" ].findall( texFile );
+	m = params[ "includegraphics_regex" ].findall( texFile );
 	if not m:
 		return params;
 
@@ -692,7 +689,7 @@ def findFigures( texFile, params, filename ):
 
 #-------------------------------------------------------------------------------
 def findSubTeXfiles( texFile, params, filename ):
-	regexfound = params[ "includedregex" ].findall( texFile );
+	regexfound = params[ "included_regex" ].findall( texFile );
 
 	for item in regexfound:
 		# the file is the last part of item
@@ -726,7 +723,7 @@ def findSubTeXfiles( texFile, params, filename ):
 
 #-------------------------------------------------------------------------------
 def findBibliographies( texFile, params, filename ):
-	locs = params[ "bibliographyregex" ].findall( texFile );
+	locs = params[ "bibliography_regex" ].findall( texFile );
 	for loc in locs:
 		parsedSquigly = parseDataInSquiglyBraces( loc );
 		for dataInSquigly in parsedSquigly:
@@ -1045,30 +1042,37 @@ def latexmake_default_params():
 	# regex stuff
 
 	# set common search criteria
-	params[ "regex_files" ] = r"\w\d \-\.";
-	params[ "regex_comma" ] = r"\w\d \-\.,";
-	params[ "regex_directories" ] = r"\w\d \-\.\/\\";
+	restr_base = r"\w\d \-\.";
+	restr_comma = r"[\w\d \-\.,]*";
+	restr_option = r"[\w\d \-\.,=]*";
+	restr_pth = r"[\w\d \-\.\/\\]*";
+	restr_commadirs = r"[\w\d \-\.,\/\\]*";
+	restr_gpth = r"[\w\d \-\.\/\\\{\}]*";
+
+	restr_usepackage = r"\\usepackage(\[" + restr_option + r"\])?(\{[" + \
+		restr_commadirs + r"]*\})";
+	restr_biblatexpkg = r"\\usepackage(\[" + restr_option + \
+		"\])?\{\s*biblatex\s*\}";
+	restr_graphicspath = r"\\graphicspath\{(" + restr_gpth + ")\}";
+	restr_graphicsextension = r"\\DeclareGraphicsExtensions\{(" + \
+		restr_comma + ")\}";
+	restr_includegraphics = r"\\includegraphics(" + r"\[" + restr_option + \
+		r"\])?\s*\{(" + restr_pth + r")\}";
+	#TODO: lookup if there are options on input/include
+	restr_include = r"\\(include|input)\{(" + restr_pth + r")\}";
+	restr_bibtex = r"\\bibliography(\{" + restr_commadirs + r"\})";
+	restr_biber = r"\\addbibresource(\{" + restr_commadirs + r"\})";
 
 	# compile regex's
-	params[ "usepackage_regex" ] = re.compile( r"\\usepackage(\[[" + \
-		params[ "regex_comma" ] + r"]*\])?(\{[" + \
-		params[ "regex_files" ] + r"]*\})" );
-	params[ "biblatexregex" ] = re.compile( r"\\usepackage(\[[" + \
-		params[ "regex_comma" ] + "]*\]?\{\s*biblatex\s*\})" );
-	params[ "graphicspathregex" ] = re.compile( r"\\graphicspath\{([" + \
-		params[ "regex_directories" ] + "\{\}]*)\}" );
-	params[ "graphicsextensionsregex" ] = re.compile( r"\\DeclareGraphics" + \
-		r"Extensions\{([" + params[ "regex_comma" ] + "]*)\}" );
-	params[ "includegraphicsregex" ] = re.compile( r"\\includegraphics(" + \
-		r"\[[" + params[ "regex_comma" ] + r"]*\])?\s*\{([" + \
-		params[ "regex_directories" ] + r"]*)\}" );
-	params[ "bibliographyregex" ] = re.compile( r"\\bibliography(\{[" + \
-		params[ "regex_directories" ] + r"]*\})" );
-	params[ "includedregex" ] = re.compile( r"\\(include|input)(\[[" + \
-		params[ "regex_comma" ] + r"]\])?\{([" + params[ "regex_directories" ] + \
-		r"]*)\}" );
-
-
+	params[ "usepackage_regex" ] = re.compile( restr_usepackage );
+	params[ "biblatexpkg_regex" ] = re.compile( restr_biblatexpkg );
+	params[ "graphicspath_regex" ] = re.compile( restr_graphicspath );
+	params[ "graphicsextensions_regex" ] = re.compile( restr_graphicsextension );
+	params[ "includegraphics_regex" ] = re.compile( restr_includegraphics );
+	params[ "biber_regex" ] = re.compile( restr_biber );
+	params[ "bibtex_regex" ] = re.compile( restr_bibtex );
+	params[ "bibliography_regex" ] = params[ "bibtex_regex" ];
+	params[ "included_regex" ] = re.compile( restr_include );
 
 	return params;
 # fed latexmake_default_params()
