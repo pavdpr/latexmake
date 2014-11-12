@@ -651,23 +651,40 @@ def findGraphicsExtensions( texFile, params, filename ):
 
 #-------------------------------------------------------------------------------
 def findFigurePath( figurefilename, params, filename ):
-	# TODO?: do I want to return all possible figures instead of the first?
-	# try to find the figure in the graphics paths
+	# this will grab ALL figures of the desired name.
 
+	files = [];
+
+	# search for the file without an extension.
+	# this is bad LaTeX practice, but not everyone follows good practices when coding
 	for pth in params[ "graphics_paths" ]:
 		if os.path.isfile( os.path.join( pth, figurefilename ) ):
 			params[ "fig_files" ].append( os.path.join( pth, figurefilename ) );
-			return params;
+			files.append( os.path.join( pth, figurefilename ) );
 
 	# we did not find a match without extensions
 	# search for a match with a graphics extension
 	for pth in params[ "graphics_paths" ]:
 		for ext in params[ "fig_extensions" ]:
 			if os.path.isfile( os.path.join( pth, figurefilename + ext ) ):
-				params[ "fig_files" ].append( os.path.join( pth, figurefilename + ext ) );
-				return params;
+				params[ "fig_files" ].append( os.path.join( pth, \
+					figurefilename + ext ) );
+				files.append( os.path.join( pth, figurefilename + ext ) );
 
-	print "Figure '" + figurefilename + "' not found in the graphics paths"
+	if not files:
+		# try to grab a converted version (one *MIGHT* exist if the original
+		# does not)
+		for pth in params[ "graphics_paths" ]:
+			for ext in params[ "figure_aux_extensions" ]:
+				if os.path.isfile( os.path.join( pth, figurefilename + ext ) ):
+					params[ "fig_files" ].append( os.path.join( pth, \
+						figurefilename + ext ) );
+					files.append( os.path.join( pth, figurefilename + ext ) );
+
+	if not files:
+		print "Figure '" + figurefilename + "' not found in the graphics paths";
+	elif len( files ) > 1:
+		params[ "duplicate_fig_files" ].extend( files );
 
 	return params;
 # fed findFigurePath( filename, params )
@@ -887,6 +904,7 @@ def latexmake_default_params():
 	params[ "basepath" ] = os.path.abspath( "." );
 	params[ "tex_files" ] = [];
 	params[ "fig_files" ] = [];
+	params[ "duplicate_fig_files" ] = [];
 	params[ "bib_files" ] = [];
 	params[ "sty_files" ] = [];
 	params[ "cls_files" ] = [];
@@ -1075,8 +1093,6 @@ def latexmake_default_params():
 	params[ "bibliography_regex" ] = params[ "bibtex_regex" ];
 	params[ "included_regex" ] = re.compile( restr_include );
 
-	print restr_includegraphics
-
 	return params;
 # fed latexmake_default_params()
 #-------------------------------------------------------------------------------
@@ -1245,6 +1261,13 @@ def write_makefile( fid, options ):
 	writeLongLines( fid, tmp );
 	fid.write( "\n" );
 
+	tmp = "DUP_FIG_FILES=";
+	for f in options[ "duplicate_fig_files" ]:
+		tmp += ( " " + f );
+	tmp += ( "\n" );
+	writeLongLines( fid, tmp );
+	fid.write( "\n" );
+
 	tmp = "STY_FILES=";
 	for f in options[ "sty_files" ]:
 		tmp += ( " " + f );
@@ -1309,6 +1332,13 @@ def write_makefile( fid, options ):
 
 	tmp = "PKG_AUX_EXT=";
 	for ext in options[ "pkg_aux_extensions" ]:
+		tmp += ( " *" + ext );
+	tmp += "\n";
+	writeLongLines( fid, tmp );
+	fid.write( "\n" );
+
+	tmp = "FIG_EXT=";
+	for ext in options[ "fig_extensions" ]:
 		tmp += ( " *" + ext );
 	tmp += "\n";
 	writeLongLines( fid, tmp );
@@ -1627,7 +1657,7 @@ def write_makefile( fid, options ):
 		fid.write( "\t$(info Old Commit: ${OLD})\n" );
 		fid.write( "\t$(info New Commit: ${NEW})\n" );
 		# Clone the repo to tmp
-		fid.write( "\tgit clone . ${TMP}/git\n" );
+		fid.write( "\t${GIT} clone . ${TMP}/git\n" );
 		fid.write( "\t${CD} ${TMP}/git; \\\n" );
 		for run in [ "old", "new" ]:
 			# checkout the desired commit
