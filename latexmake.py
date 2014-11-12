@@ -650,23 +650,24 @@ def findGraphicsExtensions( texFile, params, filename ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findFigurePath( filename, params ):
+def findFigurePath( figurefilename, params, filename ):
 	# TODO?: do I want to return all possible figures instead of the first?
 	# try to find the figure in the graphics paths
+
 	for pth in params[ "graphics_paths" ]:
-		if os.path.isfile( os.path.join( pth, filename ) ):
-			params[ "fig_files" ].append( os.path.join( pth, filename ) );
+		if os.path.isfile( os.path.join( pth, figurefilename ) ):
+			params[ "fig_files" ].append( os.path.join( pth, figurefilename ) );
 			return params;
 
 	# we did not find a match without extensions
 	# search for a match with a graphics extension
 	for pth in params[ "graphics_paths" ]:
 		for ext in params[ "fig_extensions" ]:
-			if os.path.isfile( os.path.join( pth, filename + ext ) ):
-				params[ "fig_files" ].append( os.path.join( pth, filename + ext ) );
+			if os.path.isfile( os.path.join( pth, figurefilename + ext ) ):
+				params[ "fig_files" ].append( os.path.join( pth, figurefilename + ext ) );
 				return params;
 
-	print "Figure '" + filename + "' not found in the graphics paths"
+	print "Figure '" + figurefilename + "' not found in the graphics paths"
 
 	return params;
 # fed findFigurePath( filename, params )
@@ -681,7 +682,7 @@ def findFigures( texFile, params, filename ):
 
 	# get the figure path
 	for figure in m:
-		params = findFigurePath( figure[ 1 ], params );
+		params = findFigurePath( figure[ 1 ], params, filename );
 
 	return params;
 # fed findFigures( texFile, params )
@@ -1044,7 +1045,7 @@ def latexmake_default_params():
 	# set common search criteria
 	restr_base = r"\w\d \-\.";
 	restr_comma = r"[\w\d \-\.,]*";
-	restr_option = r"[\w\d \-\.,=]*";
+	restr_option = r"[\w\d \-\.,=\\]*";
 	restr_pth = r"[\w\d \-\.\/\\]*";
 	restr_commadirs = r"[\w\d \-\.,\/\\]*";
 	restr_gpth = r"[\w\d \-\.\/\\\{\}]*";
@@ -1073,6 +1074,8 @@ def latexmake_default_params():
 	params[ "bibtex_regex" ] = re.compile( restr_bibtex );
 	params[ "bibliography_regex" ] = params[ "bibtex_regex" ];
 	params[ "included_regex" ] = re.compile( restr_include );
+
+	print restr_includegraphics
 
 	return params;
 # fed latexmake_default_params()
