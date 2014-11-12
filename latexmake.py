@@ -881,7 +881,7 @@ def latexmake_default_params():
 		"tex2rtf", "latex2rtf" ];
 
  	params[ "tex_engine" ] = "PDFLATEX";
-	params[ "tex_options" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
+	params[ "tex_flags" ] = "--file-line-error --synctex=1"; #include synctex to help out TeXShop
 	params[ "bib_engine" ] = "BIBTEX";
 	params[ "idx_engine" ] = "MAKEINDEX";
 	params[ "gls_engine" ] = "MAKEGLOSSARIES";
@@ -949,23 +949,34 @@ def latexmake_default_params():
 		print "  Download from http://latex2rtf.sourceforge.net/";
 		print "  The following makefile options will not be built:";
 		print "    rtf";
-	params[ "latex2rtf_options" ] = "-M32";
+	params[ "latex2rtf_flags" ] = "-M32";
 
 	params[ "rm" ] = "rm";
-	params[ "rm_options" ] = "-rf";
+	params[ "rm_flags" ] = "-rf";
 	params[ "echo" ] = "echo";
 	params[ "find" ] = "find";
 	params[ "cd" ] = "cd";
 	params[ "pwd" ] = "pwd";
 	params[ "tar" ] = "tar";
 	params[ "zip" ] = "zip";
-	params[ "unix_commands" ] = [ "rm", "echo", "find", "cd", "pwd", "tar", "zip" ];
+	params[ "mkdir" ] = "mkdir";
+	params[ "unix_commands" ] = [ "rm", "echo", "find", "cd", "pwd", \
+		"tar", "zip", "mkdir" ];
 	if ( platform.system() == "Darwin" ):
 		params[ "use_open" ] = True;
 		params[ "open" ] = "open";
 		params[ "unix_commands" ].append( "open" );
 	else:
 		params[ "use_open" ] = False;
+
+	# add this file. Try to be as general as possible for cross system compatibility
+	if functionExists( "latexmake.py" ):
+		params[ "latexmake" ] = "latexmake.py";
+	elif functionExists( "latexmake" ):
+		params[ "latexmake" ] = "latexmake";
+	else:
+		params[ "latexmake" ] = os.path.realpath( __file__ );
+
 
 	params[ "has_git" ] = functionExists( "git" );
 	if params[ "has_git" ]:
@@ -1110,6 +1121,12 @@ def write_makefile( fid, options ):
 	fid.write( latexmake_header() );
 	fid.write( "\n\n" );
 
+	# latexmake
+	fid.write( "# latexmake\n" );
+	fid.write( "# \tThis may not be in the same location on other systems\n" );
+	fid.write( "LATEXMAKE=" + options[ "latexmake" ] + "\n" );
+	fid.write( "\n\n" );
+
 	# TeX commands
 	fid.write( "# TeX commands (MODIFY AT YOUR OWN RISK)\n" );
 	fid.write( "TEX=" + options[ "tex" ] + "\n" );
@@ -1144,15 +1161,15 @@ def write_makefile( fid, options ):
 
 	# write the tex options
 	fid.write( "# TeX options\n" );
-	fid.write( "TEX_OPTIONS=" + options[ "tex_options" ] + "\n" );
-	fid.write( "LATEX2RTF_OPTIONS=" + options[ "latex2rtf_options" ] + "\n" );
+	fid.write( "TEXFLAGS=" + options[ "tex_flags" ] + "\n" );
+	fid.write( "LATEX2RTFFLAGS=" + options[ "latex2rtf_flags" ] + "\n" );
 	fid.write( "\n" );
 
 	# write the other enigines of other uitilies
 	fid.write( "# UNIX commands and options\n" )
 	fid.write( "MAKE=" + options[ "make" ] + "\n" );
 	fid.write( "RM=" + options[ "rm" ] + "\n" );
-	fid.write( "RMO=" + options[ "rm_options" ] + "\n" );
+	fid.write( "RMFLAGS=" + options[ "rm_flags" ] + "\n" );
 	fid.write( "ECHO=" + options[ "echo" ] + "\n" );
 	fid.write( "FIND=" + options[ "find" ] + "\n" );
 	fid.write( "CD=" + options[ "cd" ] + "\n" );
@@ -1165,6 +1182,7 @@ def write_makefile( fid, options ):
 		fid.write( "OPEN=" + options[ "open" ] + "\n" );
 	if options[ "has_mktemp" ]:
 		fid.write( "MKTEMP=" + options[ "mktemp" ] + "\n" );
+	fid.write( "MKDIR=" + options[ "mkdir" ] + "\n" );
 	fid.write( "\n" );
 
 	fid.write( "# Source Files\n" );
@@ -1382,14 +1400,14 @@ def write_makefile( fid, options ):
 	fid.write( "# clean auxiliary files\n" );
 	fid.write( ".PHONY: clean\n" );
 	fid.write( "clean:\n" );
-	fid.write( "\t${RM} ${RMO} ${ALL_AUX_EXT}\n" );
+	fid.write( "\t${RM} ${RMFLAGS} ${ALL_AUX_EXT}\n" );
 
 	# cleanall
 	fid.write( "\n\n" );
 	fid.write( "# clean all output files\n" );
 	fid.write( ".PHONY: cleanall\n" );
 	fid.write( "cleanall:\n" );
-	tmp = "${RM} ${RMO} ${ALL_AUX_EXT}";
+	tmp = "${RM} ${RMFLAGS} ${ALL_AUX_EXT}";
 	for ext in [ "dvi", "ps", "eps", "pdf" ]:
 		tmp += ( " ${SOURCE}." + ext );
 	tmp += "\n";
@@ -1400,28 +1418,28 @@ def write_makefile( fid, options ):
 	fid.write( "# clean general auxiliary files\n" );
 	fid.write( ".PHONY: cleangeneral\n" );
 	fid.write( "cleangeneral:\n" );
-	fid.write( "\t${RM} ${RMO} ${TEX_AUX_EXT}\n" );
+	fid.write( "\t${RM} ${RMFLAGS} ${TEX_AUX_EXT}\n" );
 
 	# clean beamer
 	fid.write( "\n\n" );
 	fid.write( "# clean beamer auxiliary files\n" );
 	fid.write( ".PHONY: cleanbeamer\n" );
 	fid.write( "cleanbeamer:\n" );
-	fid.write( "\t${RM} ${RMO} ${BEAMER_AUX_EXT}\n" );
+	fid.write( "\t${RM} ${RMFLAGS} ${BEAMER_AUX_EXT}\n" );
 
 	# clean bib
 	fid.write( "\n\n" );
 	fid.write( "# clean bibliography auxiliary files\n" );
 	fid.write( ".PHONY: cleanbib\n" );
 	fid.write( "cleanbib:\n" );
-	fid.write( "\t${RM} ${RMO} ${BIB_AUX_EXT}\n" );
+	fid.write( "\t${RM} ${RMFLAGS} ${BIB_AUX_EXT}\n" );
 
 	# clean figs
 	fid.write( "\n\n" );
 	fid.write( "# clean -converted-to.pdf files\n" );
 	fid.write( ".PHONY: cleanfigs\n" );
 	fid.write( "cleanfigs:\n" );
-	tmp = "${RM} ${RMO}";
+	tmp = "${RM} ${RMFLAGS}";
 	for path in options[ "graphics_paths" ]:
 		tmp += ( " " + os.path.join( path, "*-converted-to.pdf" ) );
 	tmp += "\n";
@@ -1561,20 +1579,29 @@ def write_makefile( fid, options ):
 		fid.write( "\n\n" );
 		fid.write( "# make difference\n" );
 		fid.write( ".PHONY: diff\n" );
+		fid.write( "OLD ?= HEAD^\n" );
+		fid.write( "NEW ?= HEAD\n" );
 		fid.write( "diff: ${TEX_FILES} ${BIB_FILES} ${FIG_FILES}\n" );
 		# get the working directory
 		fid.write( "\t$(eval WD := $(shell ${PWD}))\n" );
-		fid.write( "\t@echo 'Working Directory:  ' $(WD)\n"); # I have no idea why @echo works. I stole it from http://stackoverflow.com/questions/1909188/define-make-variable-at-rule-execution-time
-		# make a temporary directory
+		fid.write( "\t$(info Working Directory:   ${WD})\n"); 	# make a temporary directory
 		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
-		fid.write( "\t@echo 'Temporary directory:' $(TMP)\n");
+		fid.write( "\t$(info Temporary Directory: ${TMP})\n");
+		fid.write( "\t${MKDIR} -p ${TMP}/diff\n" );
+		# make sure NEW and OLD are selected
+		fid.write( "\t$(info Old Commit: ${OLD})\n" );
+		fid.write( "\t$(info New Commit: ${NEW})\n" );
 		# Clone the repo to tmp
-		fid.write( "\tgit clone . ${TMP}/git\n" ); # logic is bad: ${TMP} exists...must be subfolder
+		fid.write( "\tgit clone . ${TMP}/git\n" );
 		fid.write( "\t${CD} ${TMP}/git; \\\n" );
-		fid.write( "\t${LATEXPAND} ${SOURCE}.tex >> ${SOURCE}.new.tex; \\\n" );
-		fid.write( "\t${LATEXPAND} ${SOURCE}.tex >> ${SOURCE}.old.tex; \\\n" );
-		fid.write( "\t${ECHO} 'TODO: Get figures \\\n" );
-		fid.write( "\t${ECHO} 'TODO: Get old version' \\\n" );
+		for run in [ "old", "new" ]:
+			# checkout the desired commit
+			fid.write( "\t${GIT} checkout ${" + run.upper() + "}; \\\n" );
+			# run latexpand
+			fid.write( "\t${LATEXPAND} ${SOURCE}.tex >> ${TMP}/diff/${SOURCE}." + run.lower() + ".tex; \\\n" );
+			# get the figures from this commit
+			fid.write( "\t${LATEXMAKE} ${SOURCE}.tex; \\\n" );
+			#fid.write( "\t${CP} ${FIG_FILES} ${TMP}/diff; \\\n" );
 		fid.write( "\t${LATEXDIFF} ${SOURCE}.old.tex ${SOURCE}.new.tex > ${SOURCE}.diff.tex' \\\n" );
 		fid.write( "\t${ECHO} 'TODO: Run latexmake' \\\n" );
 		fid.write( "\t${ECHO} 'TODO: Copy diff to wd' \\\n" );
@@ -1602,14 +1629,14 @@ def write_makefile( fid, options ):
 
 
 		# remove the tempory directory
-		#fid.write( "\t${RM} ${RMO} ${TMP}\n" );
+		#fid.write( "\t${RM} ${RMFLAGS} ${TMP}\n" );
 
 		# latex diff
 		fid.write( "\n\n" );
 		fid.write( "# clean difference stuff\n" );
 		fid.write( ".PHONY: cleandiff\n" );
 		fid.write( "cleandiff:\n" );
-		fid.write( "\t${RM} ${RMO} ${SOURCE}_diff.*" );
+		fid.write( "\t${RM} ${RMFLAGS} ${SOURCE}_diff.*" );
 
 
 	# zipped files (include pdf)
@@ -1652,7 +1679,7 @@ def write_makefile( fid, options ):
 	fid.write( "# tools\n" );
 	fid.write( ".PHONY: rmlog\n" );
 	fid.write( "rmlog:\n" );
-	fid.write( "\t${FIND} . -name '*.log' -exec ${RM} ${RMO} {} \;\n" );
+	fid.write( "\t${FIND} . -name '*.log' -exec ${RM} ${RMFLAGS} {} \;\n" );
 	return;
 # fed write_makefile( fid )
 #-------------------------------------------------------------------------------
