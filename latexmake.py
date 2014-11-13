@@ -545,13 +545,11 @@ def prepareTeXfile( texFile, params, filename ):
 	texFile = params[ 'lsquare_regex' ].sub( '[', texFile );
 	texFile = params[ 'rsquare_regex' ].sub( ']', texFile );
 
-	texFile = re.sub( r"\][\s\n\r]+\{", "]{", texFile );
-	texFile = re.sub( r"\}[\s\n\r]+\{", "}{", texFile );
-	texFile = re.sub( r"\][\s\n\r]+\[", "][", texFile );
-	texFile = re.sub( r"\}[\s\n\r]+\[", "}[", texFile );
-
-	# todo?: remove whitespace at end of line.
-	#	-> will probably just slow down code
+	# recombine }...[, }...{,  ]...{, and ]...[
+	texFile = params[ "squaresquiggly_regex" ].sub( "]{", texFile );
+	texFile = params[ "squigglysquiggly_regex" ].sub( "}{", texFile );
+	texFile = params[ 'squaresquare_regex' ].sub( "][", texFile );
+	texFile = params[ 'squigglysquare_regex' ].sub( "}[", texFile );
 
 	return texFile;
 # fed prepareTeXfile( texFile, params, filename )
@@ -1086,12 +1084,16 @@ def latexmake_default_params():
 
 	restr_removenewline = r"\\\\";
 	restr_removecomment = r"(?<!\\)%.*";
-	restr_commaendedline = r",\s*[\n\r]";
-	restr_removeemptylines = r"^[\s\n\r]*";
-	restr_rsquiggly = r"[\n\r]\s*\}";
-	restr_rsquare = r"[\n\r]\s*\]";
-	restr_lsquiggly = r"\{\w*[\n\r]";
-	restr_lsquare = r"\[\w*[\n\r]";
+	restr_commaendedline = r",[\s\n\r]+";
+	restr_removeemptylines = r"^[\s\n\r]+";
+	restr_rsquiggly = r"[\n\r\s]+\}";
+	restr_rsquare = r"[\n\r\s]+\]";
+	restr_lsquiggly = r"\{[\n\r\s]+";
+	restr_lsquare = r"\[[\n\r\s]+";
+	restr_squaresquiggly = r"\][\s\n\r]+\{";
+	restr_squigglysquiggly = r"\}[\s\n\r]+\{";
+	restr_squaresquare = r"\][\s\n\r]+\[";
+	restr_squigglysquare = r"\}[\s\n\r]+\[";
 
 	restr_usepackage = r"\\usepackage(\[" + restr_option + r"\])?(\{[" + \
 		restr_commadirs + r"]*\})";
@@ -1126,6 +1128,10 @@ def latexmake_default_params():
 	params[ 'rsquiggly_regex' ] = re.compile( restr_rsquiggly );
 	params[ 'lsquare_regex' ] = re.compile( restr_lsquare );
 	params[ 'rsquare_regex' ] = re.compile( restr_rsquare );
+	params[ 'squaresquiggly_regex' ] = re.compile( restr_squaresquiggly );
+	params[ 'squigglysquiggly_regex' ] = re.compile( restr_squigglysquiggly );
+	params[ 'squaresquare_regex' ] = re.compile( restr_squaresquare );
+	params[ 'squigglysquare_regex' ] = re.compile( restr_squigglysquare );
 
 	return params;
 # fed latexmake_default_params()
