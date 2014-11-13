@@ -521,23 +521,40 @@ def parseCommaSeparatedData( line ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def prepareTeXfile( texFile, filename ):
-	# filename is for debug purposes
+def prepareTeXfile( texFile, params, filename ):
+	# params: list of params
+	# texFile: content of LaTeX file
+	# filename: filename of LaTeX file (dubugging)
+
 
 	# remove newlines (escaped \ to prevent \\% from being excluded )
-	texFile = re.sub( r"\\\\", "", texFile );
+	texFile = params[ 'removenewline_regex' ].sub( "", texFile );
 
-	# merge lines that end in a comment
-	texFile = re.sub( r"(?<!\\)%.*", "", texFile );
+	# remove comments
+	texFile = params[ 'removecomment_regex' ].sub( "", texFile );
+
+	# remove empty lines
+	texFile = params[ 'removeemptylines_regex' ].sub( "", texFile );
 
 	# recombine comma ended lines
-	texFile = re.sub( r",\s*[\n\r]", ",", texFile );
+	texFile = params[ 'replacecommaendedline_regex' ].sub( ",", texFile );
+
+	# recombine bracket/squigly ended/began lines
+	texFile = params[ 'lsquiggly_regex' ].sub( '{', texFile );
+	texFile = params[ 'rsquiggly_regex' ].sub( '}', texFile );
+	texFile = params[ 'lsquare_regex' ].sub( '[', texFile );
+	texFile = params[ 'rsquare_regex' ].sub( ']', texFile );
+
+	texFile = re.sub( r"\][\s\n\r]+\{", "]{", texFile );
+	texFile = re.sub( r"\}[\s\n\r]+\{", "}{", texFile );
+	texFile = re.sub( r"\][\s\n\r]+\[", "][", texFile );
+	texFile = re.sub( r"\}[\s\n\r]+\[", "}[", texFile );
 
 	# todo?: remove whitespace at end of line.
 	#	-> will probably just slow down code
 
 	return texFile;
-# fed prepareTeXfile( texFile, thisFilename )
+# fed prepareTeXfile( texFile, params, filename )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -825,7 +842,7 @@ def parseLatexFile( filename, params ):
 	# TODO: look for latexmk directives here
 
 	# prepare the TeX file. (remove comments)
-	texFile = prepareTeXfile( texFile, filename );
+	texFile = prepareTeXfile( texFile, params, filename );
 
 	# attempt to use existing code to read multiline \usepackages
 	#texFile = " ".join(texFile.split("\n"))
@@ -1061,12 +1078,20 @@ def latexmake_default_params():
 	# regex stuff
 
 	# set common search criteria
-	restr_base = r"\w\d \-\.";
 	restr_comma = r"[\w\d \-\.,]*";
 	restr_option = r"[\w\d \-\.,=\\]*";
 	restr_pth = r"[\w\d \-\.\/\\]*";
 	restr_commadirs = r"[\w\d \-\.,\/\\]*";
 	restr_gpth = r"[\w\d \-\.\/\\\{\}]*";
+
+	restr_removenewline = r"\\\\";
+	restr_removecomment = r"(?<!\\)%.*";
+	restr_commaendedline = r",\s*[\n\r]";
+	restr_removeemptylines = r"^[\s\n\r]*";
+	restr_rsquiggly = r"[\n\r]\s*\}";
+	restr_rsquare = r"[\n\r]\s*\]";
+	restr_lsquiggly = r"\{\w*[\n\r]";
+	restr_lsquare = r"\[\w*[\n\r]";
 
 	restr_usepackage = r"\\usepackage(\[" + restr_option + r"\])?(\{[" + \
 		restr_commadirs + r"]*\})";
@@ -1092,6 +1117,15 @@ def latexmake_default_params():
 	params[ "bibtex_regex" ] = re.compile( restr_bibtex );
 	params[ "bibliography_regex" ] = params[ "bibtex_regex" ];
 	params[ "included_regex" ] = re.compile( restr_include );
+	params[	'removenewline_regex' ] = re.compile( restr_removenewline );
+	params[	'removecomment_regex' ] = re.compile( restr_removecomment );
+	params[ 'replacecommaendedline_regex' ] = re.compile( restr_commaendedline );
+	params[ 'removeemptylines_regex' ] = re.compile( restr_removeemptylines, \
+		flags = re.MULTILINE );
+	params[ 'lsquiggly_regex' ] = re.compile( restr_lsquiggly );
+	params[ 'rsquiggly_regex' ] = re.compile( restr_rsquiggly );
+	params[ 'lsquare_regex' ] = re.compile( restr_lsquare );
+	params[ 'rsquare_regex' ] = re.compile( restr_rsquare );
 
 	return params;
 # fed latexmake_default_params()
