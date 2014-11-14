@@ -276,6 +276,7 @@ def warning( message ):
 
 #-------------------------------------------------------------------------------
 def unique( data ):
+	# returns a list of the unique elements in data
 	# I do not think this can be solved with list comprehension
 	output = [];
 	for item in data:
@@ -289,12 +290,13 @@ def unique( data ):
 #-------------------------------------------------------------------------------
 def compliment( data, exclude ):
 	return [ item for item in data if item not in exclude ];
-
 # fed compliment( data, exclude )
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 def parseLongLines( line, lineLength=80, tabLength=8, numTabs=0, extra=False ):
+	# parses long lines for writing.
+	# we want to limit the length of outputs to 80 characters
 	if numTabs < 0:
 		numTabs = 0;
 
@@ -522,6 +524,7 @@ def parseCommaSeparatedData( line ):
 
 #-------------------------------------------------------------------------------
 def prepareTeXfile( texFile, params, filename ):
+	# removes LaTeX formatting, comments, whitespace to help parse the files
 	# params: list of params
 	# texFile: content of LaTeX file
 	# filename: filename of LaTeX file (dubugging)
@@ -556,57 +559,66 @@ def prepareTeXfile( texFile, params, filename ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
+def findClasses( texFile, params, filename ):
+	locs = params[ "documentclass_regex" ].findall( texFile );
+	classes = []
+	for latexclass in locs:
+		line = latexclass[ -1 ];
+		line = parseDataInSquiglyBraces( line )[ 0 ];
+		# check to see if its local
+		# we need to also look for sty to deal with legacy code!
+		params = findLocalStyFiles( line, params, filename );
+		params = findLocalClsFiles( line, params, filename );
+
+		# check to see if it is in the texmf path(s)
+		params = findTexmfStyFiles( line, params, filename );
+		params = findTexmfClsFiles( line, params, filename );
+	return params;
+# fed findClasses( texFile, params, filename )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 def findPackages( texFile, params, filename ):
-	# TODO: This does not work in cases like
-	# \usepackage[sorting=ydnt,		% reverse sort by date
-	# bibstyle=authoryear,			% use author year style (not sure how much this does w/o /cite{})
-	# defernumbers=true,			%
-	# maxnames=99,			 		% show up to 99 author names in the reference
-	# firstinits=true, 				% use first initials
-	# terseinits=false,				% period after initials
-	# uniquename=init,				%
-	# dashed=false,					%
-	# uniquename=false,				%
-	# doi=true,						% include doi where present
-	# isbn=false,					% include isbn where present
-	# useprefix=true,				%
-	# natbib=true,					%
-	# backend=biber]				% use biber on the backend
-	# {biblatex}
-	#
-	# I probably need to abandon regular expressions
-	#
-	# TODO: also have this work with \requirepackage
+	# TODO: also have this work with \RequirePackage
 
 	locs = params[ "usepackage_regex" ].findall( texFile );
 	packages = [];
-	for tmp in locs:
-		line = tmp[ -1 ];
-		for part in purifyListOfStrings( parseDataInSquiglyBraces( line ), \
-				r"[\{\}]" ):
+	for latexpackage in locs:
+		line = latexpackage[ -1 ];
+		for part in parseDataInSquiglyBraces( line ):
 			p = parseCommaSeparatedData( part );
-			packages += p;
+			packages.append( p );
 			for package in p:
 				# check to see if it is local
 				params = findLocalStyFiles( package, params, filename );
+				params = findTexmfStyFiles( package, params, filename );
 				if package == "biblatex":
-					# TODO finish
-					m = params[ "biblatexpkg_regex" ].search( texFile );
-					optionStrings = parseDataInSquareBraces( m.group() );
-					for optionString in optionStrings:
-						options = parseCommaSeparatedData( optionString );
-						opts = [ parseEquals( option ) for option in options ];
-						backend = "bibtex"; # default
-						for opt in opts:
-							if opt[ 0 ] == "backend":
-								backend = opt[ 1 ];
-								if backend == "biber":
-									params[ "bibliography_regex" ] = params[ "biber_regex" ];
-						if functionExists( backend ):
-							params[ "bib_engine" ] = backend.upper();
-						else:
-							warning( "The bibliography backend \"" + backend + \
-								"\" cannot be found" );
+					# grab all of the optional arguments for biblatex
+					optionString = latexpackage[ 1 ];
+
+					if len( optionString ) > 2:
+						optionString = optionString[ 1:-1 ];
+					else:
+						break;
+					# get each option
+					options = parseCommaSeparatedData( optionString );
+					# get all key=value options
+					opts = [ parseEquals( option ) for option in options ];
+
+					backend = "bibtex";
+					for opt in opts:
+						if opt[ 0 ] == "backend":
+							backend = opt[ 1 ];
+							if backend == "biber":
+								# use biber style bibliography search
+								params[ "bibliography_regex" ] = \
+								params[ "biber_regex" ];
+					# ensure that the backend exists
+					if functionExists( backend ):
+						params[ "bib_engine" ] = backend.upper();
+					else:
+						warning( "The bibliography backend \"" + backend + \
+							"\" cannot be found" );
 
 				elif package == "epstopdf":
 					if params[ "tex_engine" ] == "PDFLATEX":
@@ -794,36 +806,128 @@ def findGlossary( texFile, params, filename ):
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-def findLocalClsFiles( clsname, params, filename ):
-	# TODO: impliment
-	# TODO: also look in texmfpath for non-standard cls files
-	return params;
-# fed findLocalClsFiles( clsname, params, filename )
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-def findLocalStyFiles( styname, params, filename ):
-	# TODO: also look in texmfpath for non-standard sty files
+def findLocalFilesEngine( key, params, filename, ext ):
+	# the engine to find local sty or cls files
 	for root, dirs, files in os.walk( params[ "basepath" ] ):
 		if ".git" in dirs:
 			dirs.remove( ".git" );
 			# TODO: include other subfolder excludes
 
+		# set a dummy filename to None
 		f = None;
-		# this is bad logic. files may be in the directory tree.
 
-		if styname in files:
-			f = os.path.abspath( styname );
-		elif ( styname + ".sty" ) in files:
-			f = os.path.abspath( styname + ".sty" );
+		# try to find the file
+		if key in files:
+			f = os.path.abspath( key );
+		elif ( key + "." + ext ) in files:
+			f = os.path.abspath( key + "." + ext );
 
+		# we found a local copy of the file
 		if f:
-			params[ "sty_files" ].append( f );
+			# append the file to the approprate list
+			params[ ext + "_files" ].append( f );
 
 			#parse the included local style file
-			params = parseLatexFile( f, params )
+			params = parseLatexFile( f, params );
 
 	return params;
+# fed findLocalFilesEngine( key, params, filename, ext )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findLocalClsFiles( clsname, params, filename ):
+	return findLocalFilesEngine( clsname, params, filename, "cls" );
+# fed findLocalClsFiles( clsname, params, filename )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findLocalStyFiles( styname, params, filename ):
+	return findLocalFilesEngine( styname, params, filename, "sty" );
+# fed findLocalStyFiles( styfilename, params, filename )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def checkTexmfFiles( key, params, filename, rootstr ):
+	# todo: allow for wildcard seraches
+	if key not in params[ "texmf_exclude" ]:
+		filestr = os.path.join( rootstr, key );
+		# todo: verify that I need the next if statement
+		if filestr not in params[ "texmf_files" ]:
+			params[ "texmf_files" ].append( rootstr );
+
+	return params;
+# fed checkTexmfFiles( key, params, filename, root, rootstr )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def checkTexmfDirs( rootdir, params, filename, rootstr ):
+	for root, dirs, files in os.walk( rootdir ):
+		for f in files:
+			params = checkTexmfFiles( os.path.join( rootdir, f ), params, \
+				filename, rootstr );
+		for d in dirs:
+		  	params = checkTexmfDirs( os.path.join( rootdir, d), params, \
+		  		filename, os.path.joint( rootstr, d ) );
+	return params;
+# fed checkTexmfDirs( rootdir, params, filename, root, rootstr )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findTexmfFilesEngine( key, params, filename, ext ):
+	texmf_ct = 0;
+	for basepath in params[ "texmf_path" ]:
+		for root, dirs, files in os.walk( os.path.expanduser( basepath ) ):
+			if ".git" in dirs:
+				dirs.remove( ".git" );
+				# TODO: include other subfolder excludes
+
+			# set a dummy filename to None
+			f = None;
+
+			# try to find the file
+			if key in files:
+				f = os.path.abspath( key );
+			elif ( key + "." + ext ) in files:
+				f = os.path.abspath( key + "." + ext );
+
+			# we found a local copy of the file
+			if f:
+				# parse the latexfile
+				# params = parseLatexFile( f, params );
+
+				# search for and add the texmf files
+				relpth = os.path.relpath( root, os.path.expanduser( basepath ) );
+				pthstr = os.path.join( "${TEXMF_PATH" + str( texmf_ct ) + "}", \
+					relpth );
+
+				params[ "texmf_pkg_pth" ].append( pthstr );
+
+				# check any sub-directories
+				for pth in dirs:
+					params = checkTexmfDirs( os.path.join( root, pth ), \
+						params, filename, pthstr );
+
+				# check any sub-files
+				for tmp in files:
+					params = checkTexmfFiles( os.path.join( root, tmp ), \
+						params, filename, pthstr );
+
+		texmf_ct += 1;
+
+
+	return params;
+# fed findTexmfFilesEngine( key, params, filename, ext )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findTexmfClsFiles( clsname, params, filename ):
+	return findTexmfFilesEngine( clsname, params, filename, "cls" );
+# fed findLocalClsFiles( clsname, params, filename )
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+def findTexmfStyFiles( styname, params, filename ):
+	return findTexmfFilesEngine( styname, params, filename, "sty" );
 # fed findLocalStyFiles( styfilename, params, filename )
 #-------------------------------------------------------------------------------
 
@@ -844,6 +948,9 @@ def parseLatexFile( filename, params ):
 
 	# attempt to use existing code to read multiline \usepackages
 	#texFile = " ".join(texFile.split("\n"))
+
+	# search for classes
+	params = findClasses( texFile, params, filename );
 
 	# search for packages
 	params = findPackages( texFile, params, filename );
@@ -923,15 +1030,19 @@ def latexmake_default_params():
 	params[ "bib_files" ] = [];
 	params[ "sty_files" ] = [];
 	params[ "cls_files" ] = [];
-	params[ "texmf_include_dirs" ] = [];
 	params[ "output_extension" ] = [ "pdf" ];
 	params[ "graphics_paths" ] = [ "." ];
 	params[ "sub_paths" ] = [];
-	# TODO: make a bit more robust for differnt os's
-	if os.path.exists( "~/Libarary/texmf" ):
-		params[ "texmf_path" ] = "~/Libarary/texmf"
-	else:
-		params[ "texmf_path" ] = None;
+	# todo: add other paths to search for
+	params[ "texmf_path" ] = [];
+	possibletexmfpaths = [ "~/Library/texmf", \
+		"/usr/local/texlive/texmf-local" ];
+	for pth in possibletexmfpaths:
+		if os.path.exists( os.path.expanduser( pth ) ):
+			params[ "texmf_path" ].append( pth );
+	params[ "texmf_files" ] = [];
+	params[ "texmf_pkg_pth" ] = [];
+	params[ "texmf_exclude" ] = [ ".DS_Store" ];
 
 	params[ "has_latexpand" ] = functionExists( "latexpand" );
 	if params[ "has_latexpand" ]:
@@ -988,8 +1099,9 @@ def latexmake_default_params():
 	params[ "tar" ] = "tar";
 	params[ "zip" ] = "zip";
 	params[ "mkdir" ] = "mkdir";
+	params[ "cp" ] = "cp";
 	params[ "unix_commands" ] = [ "rm", "echo", "find", "cd", "pwd", \
-		"tar", "zip", "mkdir" ];
+		"tar", "zip", "mkdir", "cp" ];
 	if ( platform.system() == "Darwin" ):
 		params[ "use_open" ] = True;
 		params[ "open" ] = "open";
@@ -1095,10 +1207,10 @@ def latexmake_default_params():
 	restr_squaresquare = r"\][\s\n\r]+\[";
 	restr_squigglysquare = r"\}[\s\n\r]+\[";
 
-	restr_usepackage = r"\\usepackage(\[" + restr_option + r"\])?(\{[" + \
-		restr_commadirs + r"]*\})";
-	restr_biblatexpkg = r"\\usepackage(\[" + restr_option + \
-		"\])?\{\s*biblatex\s*\}";
+	restr_documentclass = r"\\(documentclass|LoadClass)(\[" + restr_option + \
+		r"\])?(\{[" + restr_commadirs + r"]*\})";
+	restr_usepackage = r"\\(usepackage|RequirePackage)(\[" + restr_option + \
+		r"\])?(\{[" + restr_commadirs + r"]*\})";
 	restr_graphicspath = r"\\graphicspath\{(" + restr_gpth + ")\}";
 	restr_graphicsextension = r"\\DeclareGraphicsExtensions\{(" + \
 		restr_comma + ")\}";
@@ -1110,8 +1222,8 @@ def latexmake_default_params():
 	restr_biber = r"\\addbibresource(\{" + restr_commadirs + r"\})";
 
 	# compile regex's
+	params[ "documentclass_regex" ] = re.compile( restr_documentclass );
 	params[ "usepackage_regex" ] = re.compile( restr_usepackage );
-	params[ "biblatexpkg_regex" ] = re.compile( restr_biblatexpkg );
 	params[ "graphicspath_regex" ] = re.compile( restr_graphicspath );
 	params[ "graphicsextensions_regex" ] = re.compile( restr_graphicsextension );
 	params[ "includegraphics_regex" ] = re.compile( restr_includegraphics );
@@ -1243,27 +1355,27 @@ def write_makefile( fid, options ):
 	fid.write( "\n\n" );
 
 	# write the tex engines
-	fid.write( "# TeX commands\n" );
-	fid.write( "TEX_ENGINE=${" + options[ "tex_engine" ] + "}\n" );
-	fid.write( "BIB_ENGINE=${" + options[ "bib_engine" ] + "}\n" );
-	fid.write( "IDX_ENGINE=${" + options[ "idx_engine" ] + "}\n" );
-	fid.write( "GLS_ENGINE=${" + options[ "gls_engine" ] + "}\n" );
+	fid.write( "# TeX commands (these are what are called)\n" );
+	fid.write( "TEX_ENGINE?=${" + options[ "tex_engine" ] + "}\n" );
+	fid.write( "BIB_ENGINE?=${" + options[ "bib_engine" ] + "}\n" );
+	fid.write( "IDX_ENGINE?=${" + options[ "idx_engine" ] + "}\n" );
+	fid.write( "GLS_ENGINE?=${" + options[ "gls_engine" ] + "}\n" );
 	fid.write( "\n" );
 
-	# write the tex options
-	fid.write( "# TeX options\n" );
-	fid.write( "TEXFLAGS=" + options[ "tex_flags" ] + "\n" );
-	fid.write( "LATEX2RTFFLAGS=" + options[ "latex2rtf_flags" ] + "\n" );
+	# write the tex command flags
+	fid.write( "# TeX flags\n" );
+	fid.write( "TEXFLAGS?=" + options[ "tex_flags" ] + "\n" );
+	fid.write( "LATEX2RTFFLAGS?=" + options[ "latex2rtf_flags" ] + "\n" );
 	fid.write( "\n" );
 
 	# write the other enigines of other uitilies
-	fid.write( "# UNIX commands and options\n" )
+	fid.write( "# UNIX commands\n" )
 	fid.write( "MAKE=" + options[ "make" ] + "\n" );
 	fid.write( "RM=" + options[ "rm" ] + "\n" );
-	fid.write( "RMFLAGS=" + options[ "rm_flags" ] + "\n" );
 	fid.write( "ECHO=" + options[ "echo" ] + "\n" );
 	fid.write( "FIND=" + options[ "find" ] + "\n" );
 	fid.write( "CD=" + options[ "cd" ] + "\n" );
+	fid.write( "CP=" + options[ "cp" ] + "\n" );
 	fid.write( "PWD=" + options[ "pwd" ] + "\n" );
 	fid.write( "TAR=" + options[ "tar" ] + "\n" );
 	fid.write( "ZIP=" + options[ "zip" ] + "\n" );
@@ -1275,6 +1387,29 @@ def write_makefile( fid, options ):
 		fid.write( "MKTEMP=" + options[ "mktemp" ] + "\n" );
 	fid.write( "MKDIR=" + options[ "mkdir" ] + "\n" );
 	fid.write( "\n" );
+
+	# unix command flags
+	fid.write( "# UNIX flags\n" )
+	fid.write( "RMFLAGS?=" + options[ "rm_flags" ] + "\n" );
+	fid.write( "\n" );
+
+	fid.write( "# Paths\n" );
+	tmp = "GRAPHICS_PATHS=";
+	tmp += " ".join( options[ "graphics_paths" ] );
+	tmp += "\n";
+	writeLongLines( fid, tmp );
+	fid.write( "\n" );
+
+	tmp = "TEXMF_PATHS=";
+	tmp += " ".join( options[ "texmf_path" ] );
+	tmp += "\n";
+	writeLongLines( fid, tmp );
+	fid.write( "\n" );
+
+	for i in range( 0, len( options[ "texmf_path" ] ) ):
+		fid.write( "TEXMF_PATH" + str( i ) + "=" + \
+			options[ "texmf_path" ][ i ] + "\n" );
+	fid.write( "\n\n" );
 
 	fid.write( "# Source Files\n" );
 	fid.write( "SOURCE=" + options[ "basename" ] + "\n" );
@@ -1321,6 +1456,14 @@ def write_makefile( fid, options ):
 	tmp += ( "\n" );
 	writeLongLines( fid, tmp );
 	fid.write( "\n" );
+
+	if options[ "texmf_pkg_pth" ]:
+		tmp = "TEXMF_PKG_PTH=";
+		for f in options[ "texmf_pkg_pth" ]:
+			tmp += ( " " + f );
+		tmp += ( "\n" );
+		writeLongLines( fid, tmp );
+		fid.write( "\n" );
 	fid.write( "\n" );
 
 	# extensions
@@ -1386,12 +1529,6 @@ def write_makefile( fid, options ):
 
 	tmp = "ALL_AUX_EXT=${TEX_AUX_EXT} ${BIB_AUX_EXT} ${IDX_AUX_EXT} " + \
 		"${BEAMER_AUX_EXT} ${GLS_AUX_EXT} ${PKG_AUX_EXT} ${FIG_AUX_EXT}\n"
-	writeLongLines( fid, tmp );
-	fid.write( "\n\n" );
-
-	tmp = "GRAPHICS_PATHS=";
-	tmp += " ".join( options[ "graphics_paths" ] );
-	tmp += "\n";
 	writeLongLines( fid, tmp );
 	fid.write( "\n\n" );
 
@@ -1745,38 +1882,97 @@ def write_makefile( fid, options ):
 
 
 	# zipped files (include pdf)
-	# TODO: figure out pdf/ps/eps/dvi output extension
 	fid.write( "\n\n" );
 	fid.write( "# make zip (include output document)\n" );
 	fid.write( ".PHONY: zip\n" );
 	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
-	tmp += "{SOURCE}.pdf Makefile";
+	tmp += "Makefile"; # {SOURCE}.pdf # TODO: figure out pdf/ps/eps/dvi output extension
 	writeLongLines( fid, "zip: " + tmp + "\n" )
-	writeLongLines( fid, "${ZIP} -r ${SOURCE}.zip " + tmp + "\n", numTabs = 1 );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
+		fid.write( "\t$(info Temporary Directory: ${TMP})\n");
+		fid.write( "\t${MKDIR} -p ${TMP}/texmf\n" );
+		fid.write( "\t${ECHO} 'This project contains files in a texmf directory.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'These files should be placed in a texmf directory on your machine.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'The texmf directories on this machine are:' >> ${TMP}/texmf/readme\n" );
+		for tmp2 in options[ "texmf_path" ]:
+			fid.write( "\t${ECHO} '  " + tmp2 + "' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\tfor f in ${TEXMF_PKG_PTH}; do \\\n" );
+		fid.write( "\t\t${CP} -r $$f ${TMP}/texmf; \\\n" );
+		fid.write( "\tdone\n" );
+		tmp += " ${TMP}/texmf";
+	writeLongLines( fid, "${ZIP} -rq ${SOURCE}.zip " + tmp + "\n", numTabs = 1 );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t${RM} ${RMFLAGS} ${TMP}\n" );
 
 	fid.write( "\n\n" );
 	fid.write( "# make zip (source only)\n" );
 	fid.write( ".PHONY: zipsource\n" );
 	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
 	tmp += "Makefile";
-	writeLongLines( fid, "zipsource: " + tmp + "\n" )
-	writeLongLines( fid, "${ZIP} -r ${SOURCE}.zip " + tmp + "\n", numTabs = 1 );
+	writeLongLines( fid, "zipsource: " + tmp + "\n" );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
+		fid.write( "\t$(info Temporary Directory: ${TMP})\n");
+		fid.write( "\t${MKDIR} -p ${TMP}/texmf\n" );
+		fid.write( "\t${ECHO} 'This project contains files in a texmf directory.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'These files should be placed in a texmf directory on your machine.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'The texmf directories on this machine are:' >> ${TMP}/texmf/readme\n" );
+		for tmp2 in options[ "texmf_path" ]:
+			fid.write( "\t${ECHO} '  " + tmp2 + "' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\tfor f in ${TEXMF_PKG_PTH}; do \\\n" );
+		fid.write( "\t\t${CP} -r $$f ${TMP}/texmf; \\\n" );
+		fid.write( "\tdone\n" );
+		tmp += " ${TMP}/texmf";
+	writeLongLines( fid, "${ZIP} -rq ${SOURCE}.zip " + tmp + "\n", numTabs = 1 );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t${RM} ${RMFLAGS} ${TMP}\n" );
 
 	fid.write( "\n\n" );
 	fid.write( "# make gzip (source only)\n" );
 	fid.write( ".PHONY: gzip\n" );
 	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
 	tmp += "Makefile";
-	writeLongLines( fid, "gzip: " + tmp + "\n" )
+	writeLongLines( fid, "gzip: " + tmp + "\n" );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
+		fid.write( "\t$(info Temporary Directory: ${TMP})\n");
+		fid.write( "\t${MKDIR} -p ${TMP}/texmf\n" );
+		fid.write( "\t${ECHO} 'This project contains files in a texmf directory.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'These files should be placed in a texmf directory on your machine.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'The texmf directories on this machine are:' >> ${TMP}/texmf/readme\n" );
+		for tmp2 in options[ "texmf_path" ]:
+			fid.write( "\t${ECHO} '  " + tmp2 + "' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\tfor f in ${TEXMF_PKG_PTH}; do \\\n" );
+		fid.write( "\t\t${CP} -r $$f ${TMP}/texmf; \\\n" );
+		fid.write( "\tdone\n" );
+		tmp += " ${TMP}/texmf";
 	writeLongLines( fid, "${TAR} -cvzf ${SOURCE}.tar.gz " + tmp + "\n", numTabs = 1 );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t${RM} ${RMFLAGS} ${TMP}\n" );
 
 	fid.write( "\n\n" );
 	fid.write( "# make gzip (source only)\n" );
 	fid.write( ".PHONY: gzipsource\n" );
 	tmp = "${TEX_FILES} ${BIB_FILES} ${FIG_FILES} ${STY_FILES} ${CLS_FILES} ";
 	tmp += "Makefile";
-	writeLongLines( fid, "gzipsource: " + tmp + "\n" )
+	writeLongLines( fid, "gzipsource: " + tmp + "\n" );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t$(eval TMP := $(shell ${MKTEMP} -d -t latexmake))\n" );
+		fid.write( "\t$(info Temporary Directory: ${TMP})\n");
+		fid.write( "\t${MKDIR} -p ${TMP}/texmf\n" );
+		fid.write( "\t${ECHO} 'This project contains files in a texmf directory.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'These files should be placed in a texmf directory on your machine.' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\t${ECHO} 'The texmf directories on this machine are:' >> ${TMP}/texmf/readme\n" );
+		for tmp2 in options[ "texmf_path" ]:
+			fid.write( "\t${ECHO} '  " + tmp2 + "' >> ${TMP}/texmf/readme\n" );
+		fid.write( "\tfor f in ${TEXMF_PKG_PTH}; do \\\n" );
+		fid.write( "\t\t${CP} -r $$f ${TMP}/texmf; \\\n" );
+		fid.write( "\tdone\n" );
+		tmp += " ${TMP}/texmf";
 	writeLongLines( fid, "${TAR} -cvzf ${SOURCE}.tar.gz " + tmp + "\n", numTabs = 1 );
+	if options[ "texmf_pkg_pth" ]:
+		fid.write( "\t${RM} ${RMFLAGS} ${TMP}\n" );
 
 
 	# tools
