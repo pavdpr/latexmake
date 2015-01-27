@@ -554,6 +554,14 @@ def prepareTeXfile( texFile, params, filename ):
 	texFile = params[ 'squaresquare_regex' ].sub( "][", texFile );
 	texFile = params[ 'squigglysquare_regex' ].sub( "}[", texFile );
 
+	# texFile = re.sub( r"[\s\n\r]+\\if", r" \\if", texFile );
+	# texFile = re.sub( r"\\if[\s\n\r]+", r"\\if ", texFile );
+	# texFile = re.sub( r"[\s\n\r]+\\else", r" \\else", texFile );
+	# texFile = re.sub( r"\\else[\s\n\r]+", r"\\else ", texFile );
+	# texFile = re.sub( r"[\s\n\r]+\\fi", r" \\fi", texFile );
+	# texFile = re.sub( r"\\fi[\s\n\r]+", r"\\fi ", texFile );
+	print filename
+
 	return texFile;
 # fed prepareTeXfile( texFile, params, filename )
 #-------------------------------------------------------------------------------
