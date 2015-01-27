@@ -764,8 +764,10 @@ def findSubTeXfiles( texFile, params, filename ):
 
 			# get the path
 			( pth, _ ) = os.path.split( f );
-			if os.path.relpath( pth ) not in params[ "sub_paths" ]:
-				params[ "sub_paths" ].append( os.path.relpath( pth ) );
+
+			if pth:
+				if os.path.relpath( pth ) not in params[ "sub_paths" ]:
+					params[ "sub_paths" ].append( os.path.relpath( pth ) );
 
 			# parse the subfiles
 			params = parseLatexFile( f, params );
