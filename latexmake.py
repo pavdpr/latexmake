@@ -24,6 +24,10 @@
         2014-05-28: Paul Romanczyk
         - Working on latexdiff stuff
 
+        2015-06-22: Paul Romanczyk
+        - Fixed a bug with glossaries not be added properly.
+        - Updated the __main__.
+
     TODO:
         - Fix ability to read in multiline package commands
             + Strip all newlines?
@@ -68,7 +72,9 @@
         [1] http://users.phys.psu.edu/~collins/software/latexmk-jcc/ [2014-01-08]
         [*] http://tex.stackexchange.com/questions/7770/file-extensions-of-latex-related-files
 
-
+    TODO: 
+        Glossary parsing is broken. The presence of \makeglossaries may not be in
+        the same file as /usepackage{glossaries}.
 """
 
 # import other packages
@@ -559,7 +565,7 @@ def prepare_tex_file(tex_file, params, filename):
     # tex_file = re.sub(r"\\else[\s\n\r]+", r"\\else ", tex_file)
     # tex_file = re.sub(r"[\s\n\r]+\\fi", r" \\fi", tex_file)
     # tex_file = re.sub(r"\\fi[\s\n\r]+", r"\\fi ", tex_file)
-    print filename
+    # print filename
 
     return tex_file
 # fed prepare_tex_file(tex_file, params, filename)
@@ -594,7 +600,7 @@ def find_packages(tex_file, params, filename):
         line = latexpackage[-1]
         for part in parse_data_in_squigly_braces(line):
             p = parse_comma_separated_data(part)
-            packages.append(p)
+            packages += p
             for package in p:
                 # check to see if it is local
                 params = findLocalStyFiles(package, params, filename)
@@ -802,12 +808,14 @@ def findBibliographies(tex_file, params, filename):
 
 #-------------------------------------------------------------------------------
 def find_glossary(tex_file, params, filename):
-    if "glossaries" not in params["packages"]:
+    if "glossaries" not in params["packages"] and \
+        "glossary" not in params["packages"]:
         # if glossary package is not defined, we cannot have a glossary
         return params
-    key = re.compile(r"\\makeglossaries")
-    if key.search(tex_file):
-        params["make_glossary_in_default"] = True
+    else:
+        key = re.compile(r"\\makeglossaries")
+        if key.search(tex_file):
+            params["make_glossary_in_default"] = True
     return params
 # fed find_glossary(tex_file, params, filename)
 #-------------------------------------------------------------------------------
@@ -2066,12 +2074,48 @@ def latexmake_parse_inputs():
 # fed latexmake_parse_inputs():
 #-------------------------------------------------------------------------------
 
+
 #-------------------------------------------------------------------------------
-def main():
+if __name__ == "__main__":
+    args = sys.argv
+    if not args:
+        sys.exit("Usage:\nlatexmake.py [options] filename.tex")
+    
+    # set the default parameters
+    params = latexmake_default_params()
 
-    # parse the parameters
-    params = latexmake_parse_inputs()
+    # get the file name (always last argument)
+    tmp = args[-1]
 
+    # make sure the file exists
+    if not os.path.isfile(tmp):
+        # we may have left the extension off
+        tmp += ".tex"
+        if not os.path.isfile(tmp):
+            sys.exit("The file " + args[-1] + " does not exist.")
+
+
+    # get the absolute path to the source file
+    (pth, tmp) = os.path.split(os.path.abspath(tmp))
+    params["path"] = pth
+
+    idx = tmp.find(".tex")
+
+    params["tex_files"].append(os.path.abspath(tmp))
+
+    if idx < 0:
+        sys.exit("The file " + args[-1] + " does not have a .tex extension.")
+    else:
+        tmp = tmp[:idx]
+    params["basename"] = tmp
+
+    for arg in args[1:-1]:
+        if arg.find("--tex=") == 0:
+            pass
+        elif arg.find("--bib=") == 0:
+            pass
+
+    # parse the latex file
     params = parse_tex_file(params["basename"] + ".tex", params)
 
     # open the Makefile
@@ -2082,13 +2126,5 @@ def main():
 
     # close the makefile
     fid.close()
-
-    return
-#fed main()
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-if __name__ == "__main__":
-    main()
 # __name__ == "__main__"
 #-------------------------------------------------------------------------------
