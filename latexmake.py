@@ -83,6 +83,7 @@ import re          # for parsing strings
 import sys         # for getting command-line input
 import datetime    # for adding date stamps
 import platform    # for determining if a mac to use open
+import traceback   # for printing traceback
 
 
 # set the version number
@@ -2016,14 +2017,16 @@ def write_makefile(fid, options):
 # fed write_makefile(fid)
 #-------------------------------------------------------------------------------
 
+
 #-------------------------------------------------------------------------------
-def latexmake_parse_inputs():
-    args = sys.argv
+if __name__ == "__main__":
     try:
+        args = sys.argv
         if not args:
-            raise latexmake_noInput("no inputs from latexmake_parse_inputs()\n")
+            sys.exit("Usage:\nlatexmake.py [options] filename.tex")
+        
         # set the default parameters
-        output = latexmake_default_params()
+        params = latexmake_default_params()
 
         # get the file name (always last argument)
         tmp = args[-1]
@@ -2033,98 +2036,44 @@ def latexmake_parse_inputs():
             # we may have left the extension off
             tmp += ".tex"
             if not os.path.isfile(tmp):
-                raise latexmake_nonexistantFile(tmp)
+                sys.exit("The file " + args[-1] + " does not exist.")
 
 
         # get the absolute path to the source file
         (pth, tmp) = os.path.split(os.path.abspath(tmp))
-        output["path"] = pth
+        params["path"] = pth
 
         idx = tmp.find(".tex")
 
-        output["tex_files"].append(os.path.abspath(tmp))
+        params["tex_files"].append(os.path.abspath(tmp))
 
         if idx < 0:
-            raise latexmake_invalidBasename(tmp)
+            sys.exit("The file " + args[-1] + " does not have a .tex extension.")
         else:
             tmp = tmp[:idx]
-        output["basename"] = tmp
+        params["basename"] = tmp
 
-        for arg in args[1:-1]:
-            if arg.find("--tex=") == 0:
-                pass
-            elif arg.find("--bib=") == 0:
-                pass
-            #else:
-            #    raise latexmake_invalidArgument(arg)
+        ## FUTURE: Parse command-line inputs
+        # for arg in args[1:-1]:
+        #     if arg.find("--tex=") == 0:
+        #         pass
+        #     elif arg.find("--bib=") == 0:
+        #         pass
 
+        # parse the latex file
+        params = parse_tex_file(params["basename"] + ".tex", params)
 
-    except latexmake_noInput, e:
-        raise latexmake_noInput(e.args)
-    except latexmake_invalidBasename, e:
-        raise latexmake_invalidBasename(e.args)
-    except latexmake_nonexistantFile, e:
-        raise latexmake_nonexistantFile(e.args)
-    except latexmake_invalidArgument, e:
-        raise latexmake_invalidArgument(e.args)
-    #except Exception, e
-    #    raise Exception(e.args)
-    else:
-        return output
-# fed latexmake_parse_inputs():
-#-------------------------------------------------------------------------------
+        # open the Makefile
+        fid = open("Makefile", "w")
 
+        # write the Makefile
+        write_makefile(fid, params)
 
-#-------------------------------------------------------------------------------
-if __name__ == "__main__":
-    args = sys.argv
-    if not args:
-        sys.exit("Usage:\nlatexmake.py [options] filename.tex")
+        # close the makefile
+        fid.close()
+    except Exception, e:
+        print traceback.format_exc()
+        sys.exit(e.message)
     
-    # set the default parameters
-    params = latexmake_default_params()
-
-    # get the file name (always last argument)
-    tmp = args[-1]
-
-    # make sure the file exists
-    if not os.path.isfile(tmp):
-        # we may have left the extension off
-        tmp += ".tex"
-        if not os.path.isfile(tmp):
-            sys.exit("The file " + args[-1] + " does not exist.")
-
-
-    # get the absolute path to the source file
-    (pth, tmp) = os.path.split(os.path.abspath(tmp))
-    params["path"] = pth
-
-    idx = tmp.find(".tex")
-
-    params["tex_files"].append(os.path.abspath(tmp))
-
-    if idx < 0:
-        sys.exit("The file " + args[-1] + " does not have a .tex extension.")
-    else:
-        tmp = tmp[:idx]
-    params["basename"] = tmp
-
-    for arg in args[1:-1]:
-        if arg.find("--tex=") == 0:
-            pass
-        elif arg.find("--bib=") == 0:
-            pass
-
-    # parse the latex file
-    params = parse_tex_file(params["basename"] + ".tex", params)
-
-    # open the Makefile
-    fid = open("Makefile", "w")
-
-    # write the Makefile
-    write_makefile(fid, params)
-
-    # close the makefile
-    fid.close()
 # __name__ == "__main__"
 #-------------------------------------------------------------------------------
